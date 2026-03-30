@@ -1,7 +1,6 @@
 import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
 
-dotenv.config();
+const SECRET = process.env.JWT_SECRET || 'feedsales_default_secret_change_me_2024';
 
 export function authenticate(req, res, next) {
   const header = req.headers.authorization;
@@ -11,7 +10,7 @@ export function authenticate(req, res, next) {
 
   try {
     const token = header.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, SECRET);
     req.user = decoded;
     next();
   } catch {
