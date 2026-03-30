@@ -4,6 +4,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 
+import bcrypt from 'bcryptjs';
+import db from './db.js';
 import authRoutes from './routes/auth.js';
 import customerRoutes from './routes/customers.js';
 import trialRoutes from './routes/trials.js';
@@ -12,6 +14,35 @@ import movementRoutes from './routes/movements.js';
 import salesmanRoutes from './routes/salesman.js';
 
 dotenv.config();
+
+// Auto-seed if database is empty (no admin user exists)
+function autoSeed() {
+  const adminExists = db.prepare('SELECT id FROM salesman WHERE role = ?').get('admin');
+  if (adminExists) return;
+
+  console.log('No admin found — auto-seeding database...');
+
+  const adminHash = bcrypt.hashSync('admin123', 10);
+  db.prepare(`INSERT OR IGNORE INTO salesman (name, email, password, phone, role)
+    VALUES (?, ?, ?, ?, ?)`).run('Aashish (Admin)', 'admin@feedsales.com', adminHash, '9999999999', 'admin');
+
+  const salesmanNames = [
+    'Rajesh Kumar', 'Amit Sharma', 'Priya Patel', 'Suresh Reddy', 'Neha Gupta',
+    'Vikram Singh', 'Anita Joshi', 'Manoj Verma', 'Deepika Nair', 'Ravi Tiwari',
+    'Kavita Mehta', 'Arjun Rao', 'Sunita Desai', 'Ramesh Iyer', 'Pooja Saxena'
+  ];
+  const salesmanHash = bcrypt.hashSync('sales123', 10);
+
+  for (let i = 0; i < salesmanNames.length; i++) {
+    const email = salesmanNames[i].toLowerCase().replace(' ', '.') + '@feedsales.com';
+    db.prepare(`INSERT OR IGNORE INTO salesman (name, email, password, phone, role)
+      VALUES (?, ?, ?, ?, ?)`).run(salesmanNames[i], email, salesmanHash, `98${String(i).padStart(8, '0')}`, 'salesman');
+  }
+
+  console.log('Auto-seed complete! Admin: admin@feedsales.com / admin123');
+}
+
+autoSeed();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
