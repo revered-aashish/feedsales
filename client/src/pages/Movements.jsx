@@ -1,28 +1,55 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
-import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX } from 'react-icons/fi';
 
 const today = new Date().toISOString().split('T')[0];
 const emptyForm = { customer_id: '', visit_date: today, purpose: '', location: '', notes: '', status: 'planned' };
 
 export default function Movements() {
+  const { user } = useAuth();
   const [movements, setMovements] = useState([]);
   const [customers, setCustomers] = useState([]);
-  const [filterDate, setFilterDate] = useState('');
+  const [salesmen, setSalesmen] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Filters
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [filterCustomer, setFilterCustomer] = useState('');
+  const [filterSalesman, setFilterSalesman] = useState('');
 
   const load = () => {
     const params = {};
-    if (filterDate) params.visit_date = filterDate;
+    if (dateFrom) params.date_from = dateFrom;
+    if (dateTo) params.date_to = dateTo;
+    if (filterCustomer) params.customer_id = filterCustomer;
+    if (filterSalesman) params.salesman_id = filterSalesman;
     api.get('/movements', { params }).then(r => setMovements(r.data));
   };
 
-  useEffect(() => { load(); api.get('/customers').then(r => setCustomers(r.data)); }, []);
-  useEffect(() => { load(); }, [filterDate]);
+  useEffect(() => {
+    api.get('/customers').then(r => setCustomers(r.data));
+    if (user?.role === 'admin') {
+      api.get('/salesman').then(r => setSalesmen(r.data));
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [dateFrom, dateTo, filterCustomer, filterSalesman]);
+
+  const clearFilters = () => {
+    setDateFrom('');
+    setDateTo('');
+    setFilterCustomer('');
+    setFilterSalesman('');
+  };
+
+  const activeFilterCount = [dateFrom, dateTo, filterCustomer, filterSalesman].filter(Boolean).length;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,14 +79,102 @@ export default function Movements() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Daily Movements</h1>
         <div className="flex gap-3">
-          <input type="date" value={filterDate} onChange={e => setFilterDate(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm" />
+          <button onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm border cursor-pointer transition-colors ${
+              activeFilterCount > 0 ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+            }`}>
+            <FiFilter size={16} />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="bg-indigo-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">{activeFilterCount}</span>
+            )}
+          </button>
           <button onClick={() => { setForm(emptyForm); setEditId(null); setShowModal(true); }}
             className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 cursor-pointer">
             <FiPlus size={16} /> Add Movement
           </button>
         </div>
       </div>
+
+      {/* Filter Panel */}
+      {showFilters && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-gray-700">Filter Movements</h3>
+            {activeFilterCount > 0 && (
+              <button onClick={clearFilters} className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 cursor-pointer">
+                <FiX size={14} /> Clear all filters
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Date From */}
+            <div>
+              <label className="block text-xs text-gray-500 mb-1.5 font-medium">From Date</label>
+              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                className={inp} />
+            </div>
+
+            {/* Date To */}
+            <div>
+              <label className="block text-xs text-gray-500 mb-1.5 font-medium">To Date</label>
+              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
+                className={inp} />
+            </div>
+
+            {/* Customer Name */}
+            <div>
+              <label className="block text-xs text-gray-500 mb-1.5 font-medium">Customer</label>
+              <select value={filterCustomer} onChange={e => setFilterCustomer(e.target.value)} className={inp}>
+                <option value="">All Customers</option>
+                {customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.company}</option>)}
+              </select>
+            </div>
+
+            {/* Salesman Name (admin only) */}
+            {user?.role === 'admin' && (
+              <div>
+                <label className="block text-xs text-gray-500 mb-1.5 font-medium">Salesman</label>
+                <select value={filterSalesman} onChange={e => setFilterSalesman(e.target.value)} className={inp}>
+                  <option value="">All Salesmen</option>
+                  {salesmen.filter(s => s.role === 'salesman').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+
+          {/* Active filters summary */}
+          {activeFilterCount > 0 && (
+            <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-gray-100">
+              {dateFrom && (
+                <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full">
+                  From: {dateFrom}
+                  <button onClick={() => setDateFrom('')} className="hover:text-indigo-900 cursor-pointer"><FiX size={12} /></button>
+                </span>
+              )}
+              {dateTo && (
+                <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full">
+                  To: {dateTo}
+                  <button onClick={() => setDateTo('')} className="hover:text-indigo-900 cursor-pointer"><FiX size={12} /></button>
+                </span>
+              )}
+              {filterCustomer && (
+                <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full">
+                  Customer: {customers.find(c => c.id == filterCustomer)?.name}
+                  <button onClick={() => setFilterCustomer('')} className="hover:text-indigo-900 cursor-pointer"><FiX size={12} /></button>
+                </span>
+              )}
+              {filterSalesman && (
+                <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full">
+                  Salesman: {salesmen.find(s => s.id == filterSalesman)?.name}
+                  <button onClick={() => setFilterSalesman('')} className="hover:text-indigo-900 cursor-pointer"><FiX size={12} /></button>
+                </span>
+              )}
+              <span className="text-xs text-gray-400 flex items-center">{movements.length} results</span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">

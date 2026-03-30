@@ -6,7 +6,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', (req, res) => {
-  const { salesman_id, visit_date, customer_id } = req.query;
+  const { salesman_id, visit_date, customer_id, date_from, date_to } = req.query;
   let query = `SELECT dm.*, c.name as customer_name, c.company as customer_company,
     s.name as salesman_name FROM daily_movement dm
     JOIN customer c ON dm.customer_id = c.id
@@ -16,6 +16,8 @@ router.get('/', (req, res) => {
   if (customer_id) { query += ' AND dm.customer_id = ?'; params.push(customer_id); }
   if (salesman_id) { query += ' AND dm.salesman_id = ?'; params.push(salesman_id); }
   if (visit_date) { query += ' AND dm.visit_date = ?'; params.push(visit_date); }
+  if (date_from) { query += ' AND dm.visit_date >= ?'; params.push(date_from); }
+  if (date_to) { query += ' AND dm.visit_date <= ?'; params.push(date_to); }
   if (req.user.role !== 'admin') { query += ' AND dm.salesman_id = ?'; params.push(req.user.id); }
 
   query += ' ORDER BY dm.visit_date DESC, dm.created_at DESC';
