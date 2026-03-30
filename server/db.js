@@ -97,6 +97,18 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_trial_salesman ON trial(salesman_id);
   CREATE INDEX IF NOT EXISTS idx_complaint_customer ON complaint(customer_id);
   CREATE INDEX IF NOT EXISTS idx_complaint_salesman ON complaint(salesman_id);
+  CREATE TABLE IF NOT EXISTS product (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    category TEXT,
+    description TEXT,
+    unit TEXT DEFAULT 'kg',
+    price REAL,
+    hsn_code TEXT,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
   CREATE TABLE IF NOT EXISTS daily_visit_plan (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     salesman_id INTEGER NOT NULL,
