@@ -40,7 +40,7 @@ export default function Dashboard() {
         <p className="text-gray-500 mt-1">Here's your sales overview</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-5">
         {cards.map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
             <div className="flex items-center justify-between mb-3">
