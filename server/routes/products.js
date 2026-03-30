@@ -1,183 +1,156 @@
 import { Router } from 'express';
-import XLSX from 'xlsx';
-import PDFDocument from 'pdfkit';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 import db from '../db.js';
 import { authenticate, adminOnly } from '../middleware/auth.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const router = Router();
 router.use(authenticate);
 
+// Configure multer for PDF uploads
+const dbPath = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', process.env.DB_PATH || './data/feedsales.db');
+const uploadsDir = path.join(path.dirname(dbPath), 'uploads');
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1e6)}${path.extname(file.originalname)}`;
+    cb(null, uniqueName);
+  }
+});
+
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF files are allowed'), false);
+    }
+  },
+  limits: { fileSize: 20 * 1024 * 1024 } // 20MB max
+});
+
+const uploadFields = upload.fields([
+  { name: 'pds', maxCount: 1 },
+  { name: 'msds', maxCount: 1 }
+]);
+
 // List all products
 router.get('/', (req, res) => {
-  const { search, category, is_active } = req.query;
+  const { search } = req.query;
   let query = 'SELECT * FROM product WHERE 1=1';
   const params = [];
 
   if (search) {
-    query += ' AND (name LIKE ? OR category LIKE ? OR hsn_code LIKE ?)';
-    const s = `%${search}%`;
-    params.push(s, s, s);
+    query += ' AND name LIKE ?';
+    params.push(`%${search}%`);
   }
-  if (category) { query += ' AND category = ?'; params.push(category); }
-  if (is_active !== undefined) { query += ' AND is_active = ?'; params.push(is_active); }
 
   query += ' ORDER BY name ASC';
   res.json(db.prepare(query).all(...params));
 });
 
-// Get all unique categories
-router.get('/categories', (req, res) => {
-  const categories = db.prepare('SELECT DISTINCT category FROM product WHERE category IS NOT NULL ORDER BY category').all();
-  res.json(categories.map(c => c.category));
-});
+// Download a file (PDS or MSDS)
+router.get('/:id/download/:type', (req, res) => {
+  const { id, type } = req.params;
+  if (!['pds', 'msds'].includes(type)) return res.status(400).json({ error: 'Invalid file type' });
 
-// Download as Excel
-router.get('/download/excel', (req, res) => {
-  try {
-    const products = db.prepare('SELECT name, category, description, unit, price, hsn_code, is_active, created_at FROM product ORDER BY name').all();
-
-    const data = products.map(p => ({
-      'Product Name': p.name,
-      'Category': p.category || '',
-      'Description': p.description || '',
-      'Unit': p.unit || '',
-      'Price': p.price || '',
-      'HSN Code': p.hsn_code || '',
-      'Status': p.is_active ? 'Active' : 'Inactive',
-      'Created': p.created_at || ''
-    }));
-
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(data);
-
-    // Set column widths
-    ws['!cols'] = [
-      { wch: 25 }, { wch: 18 }, { wch: 35 }, { wch: 8 },
-      { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 20 }
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, 'Products');
-    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
-
-    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename=FeedSales_Products.xlsx');
-    res.send(Buffer.from(buf));
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to generate Excel', details: err.message });
-  }
-});
-
-// Download as PDF
-router.get('/download/pdf', (req, res) => {
-  try {
-    const products = db.prepare('SELECT * FROM product ORDER BY name').all();
-
-    const doc = new PDFDocument({ margin: 40, size: 'A4', layout: 'landscape' });
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename=FeedSales_Products.pdf');
-    doc.pipe(res);
-
-    // Header
-    doc.fontSize(20).font('Helvetica-Bold').text('FeedSales - Product List', { align: 'center' });
-    doc.moveDown(0.3);
-    doc.fontSize(10).font('Helvetica').fillColor('#666')
-      .text(`Generated on ${new Date().toLocaleDateString('en-IN')} | Total: ${products.length} products`, { align: 'center' });
-    doc.moveDown(1);
-
-    // Table header
-    const startX = 40;
-    let y = doc.y;
-    const colWidths = [30, 160, 100, 180, 50, 70, 80, 60];
-    const headers = ['#', 'Product Name', 'Category', 'Description', 'Unit', 'Price', 'HSN Code', 'Status'];
-
-    doc.fillColor('#312e81').rect(startX, y, colWidths.reduce((a, b) => a + b, 0), 22).fill();
-    doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(9);
-
-    let x = startX + 5;
-    headers.forEach((h, i) => {
-      doc.text(h, x, y + 6, { width: colWidths[i] - 10 });
-      x += colWidths[i];
-    });
-    y += 25;
-
-    // Table rows
-    doc.font('Helvetica').fontSize(8).fillColor('#333');
-    products.forEach((p, idx) => {
-      if (y > 520) {
-        doc.addPage();
-        y = 40;
-      }
-
-      // Alternate row bg
-      if (idx % 2 === 0) {
-        doc.fillColor('#f5f5ff').rect(startX, y, colWidths.reduce((a, b) => a + b, 0), 20).fill();
-      }
-
-      doc.fillColor('#333');
-      x = startX + 5;
-      const row = [
-        String(idx + 1),
-        p.name || '',
-        p.category || '',
-        (p.description || '').substring(0, 40),
-        p.unit || '',
-        p.price ? `Rs.${p.price}` : '',
-        p.hsn_code || '',
-        p.is_active ? 'Active' : 'Inactive'
-      ];
-
-      row.forEach((val, i) => {
-        doc.text(val, x, y + 5, { width: colWidths[i] - 10 });
-        x += colWidths[i];
-      });
-      y += 20;
-    });
-
-    doc.end();
-  } catch (err) {
-    res.status(500).json({ error: 'Failed to generate PDF', details: err.message });
-  }
-});
-
-// Get single product
-router.get('/:id', (req, res) => {
-  const product = db.prepare('SELECT * FROM product WHERE id = ?').get(req.params.id);
+  const product = db.prepare('SELECT * FROM product WHERE id = ?').get(id);
   if (!product) return res.status(404).json({ error: 'Product not found' });
-  res.json(product);
+
+  const filePath = type === 'pds' ? product.pds_path : product.msds_path;
+  if (!filePath) return res.status(404).json({ error: `No ${type.toUpperCase()} file uploaded for this product` });
+
+  const fullPath = path.join(uploadsDir, filePath);
+  if (!fs.existsSync(fullPath)) return res.status(404).json({ error: 'File not found on server' });
+
+  const label = type.toUpperCase();
+  const safeName = product.name.replace(/[^a-zA-Z0-9_\- ]/g, '').trim();
+  res.setHeader('Content-Disposition', `attachment; filename="${safeName}_${label}.pdf"`);
+  res.setHeader('Content-Type', 'application/pdf');
+  fs.createReadStream(fullPath).pipe(res);
 });
 
-// Create product (admin only)
+// Create product (admin only) — with file uploads
 router.post('/', adminOnly, (req, res) => {
-  const { name, category, description, unit, price, hsn_code } = req.body;
-  if (!name) return res.status(400).json({ error: 'Product name is required' });
+  uploadFields(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
 
-  const result = db.prepare(
-    'INSERT INTO product (name, category, description, unit, price, hsn_code) VALUES (?, ?, ?, ?, ?, ?)'
-  ).run(name, category || null, description || null, unit || 'kg', price || null, hsn_code || null);
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: 'Product name is required' });
 
-  res.status(201).json(db.prepare('SELECT * FROM product WHERE id = ?').get(result.lastInsertRowid));
+    const pdsFile = req.files?.pds?.[0]?.filename || null;
+    const msdsFile = req.files?.msds?.[0]?.filename || null;
+
+    const result = db.prepare(
+      'INSERT INTO product (name, pds_path, msds_path) VALUES (?, ?, ?)'
+    ).run(name, pdsFile, msdsFile);
+
+    res.status(201).json(db.prepare('SELECT * FROM product WHERE id = ?').get(result.lastInsertRowid));
+  });
 });
 
-// Update product (admin only)
+// Update product (admin only) — with file uploads
 router.put('/:id', adminOnly, (req, res) => {
-  const existing = db.prepare('SELECT * FROM product WHERE id = ?').get(req.params.id);
-  if (!existing) return res.status(404).json({ error: 'Product not found' });
+  uploadFields(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
 
-  const { name, category, description, unit, price, hsn_code, is_active } = req.body;
-  db.prepare(
-    'UPDATE product SET name=?, category=?, description=?, unit=?, price=?, hsn_code=?, is_active=? WHERE id=?'
-  ).run(name || existing.name, category ?? existing.category, description ?? existing.description,
-    unit || existing.unit, price ?? existing.price, hsn_code ?? existing.hsn_code,
-    is_active ?? existing.is_active, req.params.id);
+    const existing = db.prepare('SELECT * FROM product WHERE id = ?').get(req.params.id);
+    if (!existing) return res.status(404).json({ error: 'Product not found' });
 
-  res.json(db.prepare('SELECT * FROM product WHERE id = ?').get(req.params.id));
+    const { name } = req.body;
+    let pdsPath = existing.pds_path;
+    let msdsPath = existing.msds_path;
+
+    // If new PDS uploaded, delete old one
+    if (req.files?.pds?.[0]) {
+      if (pdsPath) {
+        const oldFile = path.join(uploadsDir, pdsPath);
+        if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile);
+      }
+      pdsPath = req.files.pds[0].filename;
+    }
+
+    // If new MSDS uploaded, delete old one
+    if (req.files?.msds?.[0]) {
+      if (msdsPath) {
+        const oldFile = path.join(uploadsDir, msdsPath);
+        if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile);
+      }
+      msdsPath = req.files.msds[0].filename;
+    }
+
+    db.prepare(
+      'UPDATE product SET name=?, pds_path=?, msds_path=? WHERE id=?'
+    ).run(name || existing.name, pdsPath, msdsPath, req.params.id);
+
+    res.json(db.prepare('SELECT * FROM product WHERE id = ?').get(req.params.id));
+  });
 });
 
 // Delete product (admin only)
 router.delete('/:id', adminOnly, (req, res) => {
   const existing = db.prepare('SELECT * FROM product WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Product not found' });
+
+  // Delete associated files
+  if (existing.pds_path) {
+    const f = path.join(uploadsDir, existing.pds_path);
+    if (fs.existsSync(f)) fs.unlinkSync(f);
+  }
+  if (existing.msds_path) {
+    const f = path.join(uploadsDir, existing.msds_path);
+    if (fs.existsSync(f)) fs.unlinkSync(f);
+  }
+
   db.prepare('DELETE FROM product WHERE id = ?').run(req.params.id);
   res.json({ message: 'Product deleted' });
 });

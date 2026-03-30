@@ -100,12 +100,8 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS product (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
-    category TEXT,
-    description TEXT,
-    unit TEXT DEFAULT 'kg',
-    price REAL,
-    hsn_code TEXT,
-    is_active INTEGER DEFAULT 1,
+    pds_path TEXT,
+    msds_path TEXT,
     created_at TEXT DEFAULT (datetime('now'))
   );
 
@@ -128,5 +124,22 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_visit_plan_date ON daily_visit_plan(visit_date);
   CREATE INDEX IF NOT EXISTS idx_visit_plan_unique ON daily_visit_plan(salesman_id, visit_date, slot_number);
 `);
+
+// Migration: add pds_path, msds_path columns if upgrading from old product schema
+try {
+  db.prepare('SELECT pds_path FROM product LIMIT 1').get();
+} catch (e) {
+  try {
+    db.exec('ALTER TABLE product ADD COLUMN pds_path TEXT');
+    db.exec('ALTER TABLE product ADD COLUMN msds_path TEXT');
+    console.log('Migrated product table: added pds_path, msds_path columns');
+  } catch (e2) { /* columns may already exist */ }
+}
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(dbDir, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 export default db;
