@@ -9,6 +9,7 @@ import Trials from './pages/Trials';
 import Complaints from './pages/Complaints';
 import Movements from './pages/Movements';
 import LostCustomers from './pages/LostCustomers';
+import Salesmen from './pages/Salesmen';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -30,6 +31,7 @@ function App() {
           <Route path="/complaints" element={<ProtectedRoute><Complaints /></ProtectedRoute>} />
           <Route path="/movements" element={<ProtectedRoute><Movements /></ProtectedRoute>} />
           <Route path="/lost-customers" element={<ProtectedRoute><LostCustomers /></ProtectedRoute>} />
+          <Route path="/salesmen" element={<ProtectedRoute><Salesmen /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

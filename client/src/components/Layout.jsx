@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiUsers, FiClipboard, FiAlertCircle, FiMapPin, FiLogOut, FiHome, FiUserX } from 'react-icons/fi';
+import { FiUsers, FiClipboard, FiAlertCircle, FiMapPin, FiLogOut, FiHome, FiUserX, FiUserPlus } from 'react-icons/fi';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: FiHome },
@@ -9,6 +9,7 @@ const navItems = [
   { path: '/complaints', label: 'Complaints', icon: FiAlertCircle },
   { path: '/movements', label: 'Daily Movements', icon: FiMapPin },
   { path: '/lost-customers', label: 'Lost Customers', icon: FiUserX },
+  { path: '/salesmen', label: 'Manage Salesmen', icon: FiUserPlus, adminOnly: true },
 ];
 
 export default function Layout({ children }) {
@@ -31,7 +32,7 @@ export default function Layout({ children }) {
         </div>
 
         <nav className="flex-1 py-4">
-          {navItems.map(({ path, label, icon: Icon }) => {
+          {navItems.filter(item => !item.adminOnly || user?.role === 'admin').map(({ path, label, icon: Icon }) => {
             const active = location.pathname === path;
             return (
               <Link
