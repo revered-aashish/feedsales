@@ -97,8 +97,24 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_trial_salesman ON trial(salesman_id);
   CREATE INDEX IF NOT EXISTS idx_complaint_customer ON complaint(customer_id);
   CREATE INDEX IF NOT EXISTS idx_complaint_salesman ON complaint(salesman_id);
+  CREATE TABLE IF NOT EXISTS daily_visit_plan (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    salesman_id INTEGER NOT NULL,
+    visit_date TEXT NOT NULL,
+    customer_id INTEGER NOT NULL,
+    purpose TEXT,
+    remark TEXT,
+    slot_number INTEGER NOT NULL CHECK(slot_number BETWEEN 1 AND 8),
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (salesman_id) REFERENCES salesman(id),
+    FOREIGN KEY (customer_id) REFERENCES customer(id)
+  );
+
   CREATE INDEX IF NOT EXISTS idx_movement_salesman ON daily_movement(salesman_id);
   CREATE INDEX IF NOT EXISTS idx_movement_date ON daily_movement(visit_date);
+  CREATE INDEX IF NOT EXISTS idx_visit_plan_salesman ON daily_visit_plan(salesman_id);
+  CREATE INDEX IF NOT EXISTS idx_visit_plan_date ON daily_visit_plan(visit_date);
+  CREATE INDEX IF NOT EXISTS idx_visit_plan_unique ON daily_visit_plan(salesman_id, visit_date, slot_number);
 `);
 
 export default db;

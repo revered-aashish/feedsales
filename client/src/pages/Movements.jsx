@@ -77,7 +77,7 @@ export default function Movements() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Daily Movements</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Daily Movements Achieved</h1>
         <div className="flex gap-3">
           <button onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm border cursor-pointer transition-colors ${

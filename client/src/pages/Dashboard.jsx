@@ -29,7 +29,7 @@ export default function Dashboard() {
     { label: 'Total Customers', value: stats.customers, icon: FiUsers, color: 'bg-blue-500' },
     { label: 'Active Trials', value: stats.trials, icon: FiClipboard, color: 'bg-green-500' },
     { label: 'Complaints', value: stats.complaints, icon: FiAlertCircle, color: 'bg-orange-500' },
-    { label: 'Daily Movements', value: stats.movements, icon: FiMapPin, color: 'bg-purple-500' },
+    { label: 'Movements Achieved', value: stats.movements, icon: FiMapPin, color: 'bg-purple-500' },
     { label: 'Lost Customers', value: stats.lostCustomers, icon: FiUserX, color: 'bg-red-500' },
   ];
 
