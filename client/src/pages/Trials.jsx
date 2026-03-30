@@ -1,21 +1,53 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
-import { FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX } from 'react-icons/fi';
 
 const emptyForm = { customer_id: '', product: '', quantity: '', status: 'pending', start_date: '', end_date: '', notes: '' };
 
 export default function Trials() {
+  const { user } = useAuth();
   const [trials, setTrials] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [salesmen, setSalesmen] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
 
-  const load = () => api.get('/trials').then(r => setTrials(r.data));
+  // Filters
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [filterCustomer, setFilterCustomer] = useState('');
+  const [filterSalesman, setFilterSalesman] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
 
-  useEffect(() => { load(); api.get('/customers').then(r => setCustomers(r.data)); }, []);
+  const load = () => {
+    const params = {};
+    if (dateFrom) params.date_from = dateFrom;
+    if (dateTo) params.date_to = dateTo;
+    if (filterCustomer) params.customer_id = filterCustomer;
+    if (filterSalesman) params.salesman_id = filterSalesman;
+    if (filterStatus) params.status = filterStatus;
+    api.get('/trials', { params }).then(r => setTrials(r.data));
+  };
+
+  useEffect(() => {
+    api.get('/customers').then(r => setCustomers(r.data));
+    if (user?.role === 'admin') {
+      api.get('/salesman').then(r => setSalesmen(r.data));
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [dateFrom, dateTo, filterCustomer, filterSalesman, filterStatus]);
+
+  const clearFilters = () => {
+    setDateFrom(''); setDateTo(''); setFilterCustomer(''); setFilterSalesman(''); setFilterStatus('');
+  };
+
+  const activeFilterCount = [dateFrom, dateTo, filterCustomer, filterSalesman, filterStatus].filter(Boolean).length;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -46,11 +78,108 @@ export default function Trials() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Trials</h1>
-        <button onClick={() => { setForm(emptyForm); setEditId(null); setShowModal(true); }}
-          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 cursor-pointer">
-          <FiPlus size={16} /> Add Trial
-        </button>
+        <div className="flex gap-3">
+          <button onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm border cursor-pointer transition-colors ${
+              activeFilterCount > 0 ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+            }`}>
+            <FiFilter size={16} />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="bg-indigo-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">{activeFilterCount}</span>
+            )}
+          </button>
+          <button onClick={() => { setForm(emptyForm); setEditId(null); setShowModal(true); }}
+            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 cursor-pointer">
+            <FiPlus size={16} /> Add Trial
+          </button>
+        </div>
       </div>
+
+      {/* Filter Panel */}
+      {showFilters && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-gray-700">Filter Trials</h3>
+            {activeFilterCount > 0 && (
+              <button onClick={clearFilters} className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 cursor-pointer">
+                <FiX size={14} /> Clear all filters
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1.5 font-medium">From Date</label>
+              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={inp} />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1.5 font-medium">To Date</label>
+              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className={inp} />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1.5 font-medium">Customer</label>
+              <select value={filterCustomer} onChange={e => setFilterCustomer(e.target.value)} className={inp}>
+                <option value="">All Customers</option>
+                {customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.company}</option>)}
+              </select>
+            </div>
+            {user?.role === 'admin' && (
+              <div>
+                <label className="block text-xs text-gray-500 mb-1.5 font-medium">Salesman</label>
+                <select value={filterSalesman} onChange={e => setFilterSalesman(e.target.value)} className={inp}>
+                  <option value="">All Salesmen</option>
+                  {salesmen.filter(s => s.role === 'salesman').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+            )}
+            <div>
+              <label className="block text-xs text-gray-500 mb-1.5 font-medium">Status</label>
+              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={inp}>
+                <option value="">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="in_progress">In Progress</option>
+                <option value="successful">Successful</option>
+                <option value="failed">Failed</option>
+              </select>
+            </div>
+          </div>
+          {activeFilterCount > 0 && (
+            <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-gray-100">
+              {dateFrom && (
+                <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full">
+                  From: {dateFrom}
+                  <button onClick={() => setDateFrom('')} className="hover:text-indigo-900 cursor-pointer"><FiX size={12} /></button>
+                </span>
+              )}
+              {dateTo && (
+                <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full">
+                  To: {dateTo}
+                  <button onClick={() => setDateTo('')} className="hover:text-indigo-900 cursor-pointer"><FiX size={12} /></button>
+                </span>
+              )}
+              {filterCustomer && (
+                <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full">
+                  Customer: {customers.find(c => c.id == filterCustomer)?.name}
+                  <button onClick={() => setFilterCustomer('')} className="hover:text-indigo-900 cursor-pointer"><FiX size={12} /></button>
+                </span>
+              )}
+              {filterSalesman && (
+                <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full">
+                  Salesman: {salesmen.find(s => s.id == filterSalesman)?.name}
+                  <button onClick={() => setFilterSalesman('')} className="hover:text-indigo-900 cursor-pointer"><FiX size={12} /></button>
+                </span>
+              )}
+              {filterStatus && (
+                <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full">
+                  Status: {filterStatus.replace('_', ' ')}
+                  <button onClick={() => setFilterStatus('')} className="hover:text-indigo-900 cursor-pointer"><FiX size={12} /></button>
+                </span>
+              )}
+              <span className="text-xs text-gray-400 flex items-center">{trials.length} results</span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">

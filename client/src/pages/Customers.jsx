@@ -1,23 +1,51 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiFilter, FiX } from 'react-icons/fi';
 
 const emptyForm = { name: '', company: '', phone: '', email: '', address: '', city: '', state: '', salesman_id: '', is_lost: 0, lost_reason: '' };
 
 export default function Customers() {
+  const { user } = useAuth();
   const [customers, setCustomers] = useState([]);
   const [salesmen, setSalesmen] = useState([]);
   const [search, setSearch] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
+  const [showFilters, setShowFilters] = useState(false);
 
-  const load = () => api.get('/customers', { params: { search } }).then(r => setCustomers(r.data));
+  // Filters
+  const [filterSalesman, setFilterSalesman] = useState('');
+  const [filterCity, setFilterCity] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
 
-  useEffect(() => { load(); }, [search]);
-  useEffect(() => { api.get('/salesman').then(r => setSalesmen(r.data)); }, []);
+  const load = () => {
+    const params = {};
+    if (search) params.search = search;
+    if (filterSalesman) params.salesman_id = filterSalesman;
+    if (filterCity) params.city = filterCity;
+    if (filterStatus !== '') params.is_lost = filterStatus;
+    api.get('/customers', { params }).then(r => setCustomers(r.data));
+  };
+
+  useEffect(() => { load(); }, [search, filterSalesman, filterCity, filterStatus]);
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      api.get('/salesman').then(r => setSalesmen(r.data));
+    }
+  }, []);
+
+  // Get unique cities from loaded customers for filter dropdown
+  const allCities = [...new Set(customers.map(c => c.city).filter(Boolean))].sort();
+
+  const clearFilters = () => {
+    setFilterSalesman(''); setFilterCity(''); setFilterStatus('');
+  };
+
+  const activeFilterCount = [filterSalesman, filterCity, filterStatus].filter(v => v !== '').length;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -57,15 +85,90 @@ export default function Customers() {
     <div>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Customers</h1>
-        <button onClick={() => { setForm(emptyForm); setEditId(null); setShowModal(true); }}
-          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 cursor-pointer">
-          <FiPlus size={16} /> Add Customer
-        </button>
+        <div className="flex gap-3">
+          <button onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm border cursor-pointer transition-colors ${
+              activeFilterCount > 0 ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+            }`}>
+            <FiFilter size={16} />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="bg-indigo-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">{activeFilterCount}</span>
+            )}
+          </button>
+          <button onClick={() => { setForm(emptyForm); setEditId(null); setShowModal(true); }}
+            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 cursor-pointer">
+            <FiPlus size={16} /> Add Customer
+          </button>
+        </div>
       </div>
+
+      {/* Filter Panel */}
+      {showFilters && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-gray-700">Filter Customers</h3>
+            {activeFilterCount > 0 && (
+              <button onClick={clearFilters} className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 cursor-pointer">
+                <FiX size={14} /> Clear all filters
+              </button>
+            )}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {user?.role === 'admin' && (
+              <div>
+                <label className="block text-xs text-gray-500 mb-1.5 font-medium">Salesman</label>
+                <select value={filterSalesman} onChange={e => setFilterSalesman(e.target.value)} className={inp}>
+                  <option value="">All Salesmen</option>
+                  {salesmen.filter(s => s.role === 'salesman').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+            )}
+            <div>
+              <label className="block text-xs text-gray-500 mb-1.5 font-medium">City</label>
+              <select value={filterCity} onChange={e => setFilterCity(e.target.value)} className={inp}>
+                <option value="">All Cities</option>
+                {allCities.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1.5 font-medium">Status</label>
+              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={inp}>
+                <option value="">All</option>
+                <option value="0">Active</option>
+                <option value="1">Lost</option>
+              </select>
+            </div>
+          </div>
+          {activeFilterCount > 0 && (
+            <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-gray-100">
+              {filterSalesman && (
+                <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full">
+                  Salesman: {salesmen.find(s => s.id == filterSalesman)?.name}
+                  <button onClick={() => setFilterSalesman('')} className="hover:text-indigo-900 cursor-pointer"><FiX size={12} /></button>
+                </span>
+              )}
+              {filterCity && (
+                <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full">
+                  City: {filterCity}
+                  <button onClick={() => setFilterCity('')} className="hover:text-indigo-900 cursor-pointer"><FiX size={12} /></button>
+                </span>
+              )}
+              {filterStatus !== '' && (
+                <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full">
+                  Status: {filterStatus === '0' ? 'Active' : 'Lost'}
+                  <button onClick={() => setFilterStatus('')} className="hover:text-indigo-900 cursor-pointer"><FiX size={12} /></button>
+                </span>
+              )}
+              <span className="text-xs text-gray-400 flex items-center">{customers.length} results</span>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="relative mb-4">
         <FiSearch className="absolute left-3 top-3 text-gray-400" />
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search customers..."
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, company, or city..."
           className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
       </div>
 

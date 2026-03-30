@@ -6,7 +6,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', (req, res) => {
-  const { customer_id, salesman_id, status } = req.query;
+  const { customer_id, salesman_id, status, date_from, date_to } = req.query;
   let query = `SELECT t.*, c.name as customer_name, c.company as customer_company,
     s.name as salesman_name FROM trial t
     JOIN customer c ON t.customer_id = c.id
@@ -16,6 +16,8 @@ router.get('/', (req, res) => {
   if (customer_id) { query += ' AND t.customer_id = ?'; params.push(customer_id); }
   if (salesman_id) { query += ' AND t.salesman_id = ?'; params.push(salesman_id); }
   if (status) { query += ' AND t.status = ?'; params.push(status); }
+  if (date_from) { query += ' AND t.start_date >= ?'; params.push(date_from); }
+  if (date_to) { query += ' AND t.start_date <= ?'; params.push(date_to); }
   if (req.user.role !== 'admin') { query += ' AND t.salesman_id = ?'; params.push(req.user.id); }
 
   query += ' ORDER BY t.created_at DESC';
