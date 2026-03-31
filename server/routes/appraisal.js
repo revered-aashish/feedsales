@@ -5,12 +5,12 @@ import { authenticate } from '../middleware/auth.js';
 const router = Router();
 router.use(authenticate);
 
+const SELECT_WITH_NAME = 'SELECT sa.*, s.name as salesman_name FROM self_appraisal sa JOIN salesman s ON sa.salesman_id = s.id';
+
 // List appraisals — admin sees all, salesman sees own
 router.get('/', (req, res) => {
   const { salesman_id, month, year } = req.query;
-  let query = `SELECT sa.*, s.name as salesman_name
-    FROM self_appraisal sa
-    JOIN salesman s ON sa.salesman_id = s.id WHERE 1=1`;
+  let query = `${SELECT_WITH_NAME} WHERE 1=1`;
   const params = [];
 
   if (salesman_id) { query += ' AND sa.salesman_id = ?'; params.push(salesman_id); }
@@ -24,46 +24,34 @@ router.get('/', (req, res) => {
 
 // Create or update appraisal (upsert — one per salesman per month)
 router.post('/', (req, res) => {
-  const { month, year, coating_target, coating_sales, resin_target, resin_sales, coalseam_target, coalseam_sales } = req.body;
+  const { month, year, coating_target, coating_sales, resin_target, resin_sales,
+    coalseam_target, coalseam_sales, new_customers, issues_faced } = req.body;
   if (!month || !year) return res.status(400).json({ error: 'Month and year are required' });
 
   const salesman_id = req.user.id;
-
-  // Check if entry already exists for this salesman+month+year
   const existing = db.prepare(
     'SELECT * FROM self_appraisal WHERE salesman_id = ? AND month = ? AND year = ?'
   ).get(salesman_id, month, year);
 
   if (existing) {
-    // Only creator or admin can update
     if (req.user.role !== 'admin' && existing.salesman_id !== req.user.id) {
       return res.status(403).json({ error: 'You can only update your own appraisals' });
     }
-
     db.prepare(`UPDATE self_appraisal SET
       coating_target=?, coating_sales=?, resin_target=?, resin_sales=?,
-      coalseam_target=?, coalseam_sales=?, updated_at=datetime('now')
+      coalseam_target=?, coalseam_sales=?, new_customers=?, issues_faced=?, updated_at=datetime('now')
       WHERE id=?`
-    ).run(
-      coating_target || 0, coating_sales || 0,
-      resin_target || 0, resin_sales || 0,
-      coalseam_target || 0, coalseam_sales || 0,
-      existing.id
-    );
-
-    res.json(db.prepare('SELECT sa.*, s.name as salesman_name FROM self_appraisal sa JOIN salesman s ON sa.salesman_id = s.id WHERE sa.id = ?').get(existing.id));
+    ).run(coating_target || 0, coating_sales || 0, resin_target || 0, resin_sales || 0,
+      coalseam_target || 0, coalseam_sales || 0, new_customers || null, issues_faced || null, existing.id);
+    res.json(db.prepare(`${SELECT_WITH_NAME} WHERE sa.id = ?`).get(existing.id));
   } else {
     const result = db.prepare(`INSERT INTO self_appraisal
-      (salesman_id, month, year, coating_target, coating_sales, resin_target, resin_sales, coalseam_target, coalseam_sales)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-      salesman_id, month, year,
-      coating_target || 0, coating_sales || 0,
-      resin_target || 0, resin_sales || 0,
-      coalseam_target || 0, coalseam_sales || 0
-    );
-
-    res.status(201).json(db.prepare('SELECT sa.*, s.name as salesman_name FROM self_appraisal sa JOIN salesman s ON sa.salesman_id = s.id WHERE sa.id = ?').get(result.lastInsertRowid));
+      (salesman_id, month, year, coating_target, coating_sales, resin_target, resin_sales, coalseam_target, coalseam_sales, new_customers, issues_faced)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    ).run(salesman_id, month, year, coating_target || 0, coating_sales || 0,
+      resin_target || 0, resin_sales || 0, coalseam_target || 0, coalseam_sales || 0,
+      new_customers || null, issues_faced || null);
+    res.status(201).json(db.prepare(`${SELECT_WITH_NAME} WHERE sa.id = ?`).get(result.lastInsertRowid));
   }
 });
 
@@ -75,20 +63,21 @@ router.put('/:id', (req, res) => {
     return res.status(403).json({ error: 'You can only update your own appraisals' });
   }
 
-  const { coating_target, coating_sales, resin_target, resin_sales, coalseam_target, coalseam_sales } = req.body;
+  const { coating_target, coating_sales, resin_target, resin_sales,
+    coalseam_target, coalseam_sales, new_customers, issues_faced } = req.body;
 
   db.prepare(`UPDATE self_appraisal SET
     coating_target=?, coating_sales=?, resin_target=?, resin_sales=?,
-    coalseam_target=?, coalseam_sales=?, updated_at=datetime('now')
+    coalseam_target=?, coalseam_sales=?, new_customers=?, issues_faced=?, updated_at=datetime('now')
     WHERE id=?`
   ).run(
     coating_target ?? existing.coating_target, coating_sales ?? existing.coating_sales,
     resin_target ?? existing.resin_target, resin_sales ?? existing.resin_sales,
     coalseam_target ?? existing.coalseam_target, coalseam_sales ?? existing.coalseam_sales,
-    req.params.id
-  );
+    new_customers ?? existing.new_customers, issues_faced ?? existing.issues_faced,
+    req.params.id);
 
-  res.json(db.prepare('SELECT sa.*, s.name as salesman_name FROM self_appraisal sa JOIN salesman s ON sa.salesman_id = s.id WHERE sa.id = ?').get(req.params.id));
+  res.json(db.prepare(`${SELECT_WITH_NAME} WHERE sa.id = ?`).get(req.params.id));
 });
 
 // Delete appraisal — owner or admin only

@@ -155,6 +155,17 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_visit_plan_unique ON daily_visit_plan(salesman_id, visit_date, slot_number);
 `);
 
+// Migration: add new_customers, issues_faced to self_appraisal
+try {
+  db.prepare('SELECT new_customers FROM self_appraisal LIMIT 1').get();
+} catch (e) {
+  try {
+    db.exec('ALTER TABLE self_appraisal ADD COLUMN new_customers TEXT');
+    db.exec('ALTER TABLE self_appraisal ADD COLUMN issues_faced TEXT');
+    console.log('Migrated self_appraisal: added new_customers, issues_faced columns');
+  } catch (e2) { /* columns may already exist */ }
+}
+
 // Migration: add is_issue column to daily_movement
 try {
   db.prepare('SELECT is_issue FROM daily_movement LIMIT 1').get();
