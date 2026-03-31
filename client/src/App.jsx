@@ -12,6 +12,7 @@ import LostCustomers from './pages/LostCustomers';
 import Salesmen from './pages/Salesmen';
 import VisitPlans from './pages/VisitPlans';
 import Products from './pages/Products';
+import SelfAppraisal from './pages/SelfAppraisal';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -35,6 +36,7 @@ function App() {
           <Route path="/movements" element={<ProtectedRoute><Movements /></ProtectedRoute>} />
           <Route path="/lost-customers" element={<ProtectedRoute><LostCustomers /></ProtectedRoute>} />
           <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
+          <Route path="/self-appraisal" element={<ProtectedRoute><SelfAppraisal /></ProtectedRoute>} />
           <Route path="/salesmen" element={<ProtectedRoute><Salesmen /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>

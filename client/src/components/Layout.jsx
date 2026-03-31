@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiUsers, FiClipboard, FiAlertCircle, FiLogOut, FiHome, FiUserX, FiUserPlus, FiCalendar, FiCheckCircle, FiMenu, FiX, FiPackage } from 'react-icons/fi';
+import { FiUsers, FiClipboard, FiAlertCircle, FiLogOut, FiHome, FiUserX, FiUserPlus, FiCalendar, FiCheckCircle, FiMenu, FiX, FiPackage, FiTarget } from 'react-icons/fi';
 
 const navItems = [
   { path: '/', label: 'Dashboard', icon: FiHome },
@@ -11,6 +11,7 @@ const navItems = [
   { path: '/visit-plans', label: 'Daily Visit Planning', icon: FiCalendar },
   { path: '/movements', label: 'Movements Achieved', icon: FiCheckCircle },
   { path: '/products', label: 'Products', icon: FiPackage },
+  { path: '/self-appraisal', label: 'Self Appraisal', icon: FiTarget },
   { path: '/lost-customers', label: 'Lost Customers', icon: FiUserX },
   { path: '/salesmen', label: 'Manage Salesmen', icon: FiUserPlus, adminOnly: true },
 ];

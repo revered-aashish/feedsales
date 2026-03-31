@@ -128,6 +128,25 @@ db.exec(`
     FOREIGN KEY (user_id) REFERENCES salesman(id)
   );
 
+  CREATE TABLE IF NOT EXISTS self_appraisal (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    salesman_id INTEGER NOT NULL,
+    month INTEGER NOT NULL CHECK(month BETWEEN 1 AND 12),
+    year INTEGER NOT NULL,
+    coating_target REAL DEFAULT 0,
+    coating_sales REAL DEFAULT 0,
+    resin_target REAL DEFAULT 0,
+    resin_sales REAL DEFAULT 0,
+    coalseam_target REAL DEFAULT 0,
+    coalseam_sales REAL DEFAULT 0,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (salesman_id) REFERENCES salesman(id),
+    UNIQUE(salesman_id, month, year)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_appraisal_salesman ON self_appraisal(salesman_id);
+  CREATE INDEX IF NOT EXISTS idx_appraisal_period ON self_appraisal(year, month);
   CREATE INDEX IF NOT EXISTS idx_movement_comment_movement ON movement_comment(movement_id);
   CREATE INDEX IF NOT EXISTS idx_movement_salesman ON daily_movement(salesman_id);
   CREATE INDEX IF NOT EXISTS idx_movement_date ON daily_movement(visit_date);
