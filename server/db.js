@@ -118,12 +118,33 @@ db.exec(`
     FOREIGN KEY (customer_id) REFERENCES customer(id)
   );
 
+  CREATE TABLE IF NOT EXISTS movement_comment (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    movement_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    comment TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (movement_id) REFERENCES daily_movement(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES salesman(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_movement_comment_movement ON movement_comment(movement_id);
   CREATE INDEX IF NOT EXISTS idx_movement_salesman ON daily_movement(salesman_id);
   CREATE INDEX IF NOT EXISTS idx_movement_date ON daily_movement(visit_date);
   CREATE INDEX IF NOT EXISTS idx_visit_plan_salesman ON daily_visit_plan(salesman_id);
   CREATE INDEX IF NOT EXISTS idx_visit_plan_date ON daily_visit_plan(visit_date);
   CREATE INDEX IF NOT EXISTS idx_visit_plan_unique ON daily_visit_plan(salesman_id, visit_date, slot_number);
 `);
+
+// Migration: add is_issue column to daily_movement
+try {
+  db.prepare('SELECT is_issue FROM daily_movement LIMIT 1').get();
+} catch (e) {
+  try {
+    db.exec('ALTER TABLE daily_movement ADD COLUMN is_issue INTEGER DEFAULT 0');
+    console.log('Migrated daily_movement table: added is_issue column');
+  } catch (e2) { /* column may already exist */ }
+}
 
 // Migration: add pds_path, msds_path columns if upgrading from old product schema
 try {

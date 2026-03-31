@@ -3,10 +3,10 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
-import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX, FiMessageSquare, FiAlertTriangle, FiSend } from 'react-icons/fi';
 
 const today = new Date().toISOString().split('T')[0];
-const emptyForm = { customer_id: '', visit_date: today, purpose: '', location: '', notes: '', status: 'planned' };
+const emptyForm = { customer_id: '', visit_date: today, purpose: '', location: '', notes: '', status: 'planned', is_issue: false };
 
 export default function Movements() {
   const { user } = useAuth();
@@ -23,6 +23,13 @@ export default function Movements() {
   const [dateTo, setDateTo] = useState('');
   const [filterCustomer, setFilterCustomer] = useState('');
   const [filterSalesman, setFilterSalesman] = useState('');
+  const [filterIssue, setFilterIssue] = useState('');
+
+  // Comments
+  const [commentModal, setCommentModal] = useState(null); // movement object
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [loadingComments, setLoadingComments] = useState(false);
 
   const load = () => {
     const params = {};
@@ -30,6 +37,7 @@ export default function Movements() {
     if (dateTo) params.date_to = dateTo;
     if (filterCustomer) params.customer_id = filterCustomer;
     if (filterSalesman) params.salesman_id = filterSalesman;
+    if (filterIssue !== '') params.is_issue = filterIssue;
     api.get('/movements', { params }).then(r => setMovements(r.data));
   };
 
@@ -40,16 +48,13 @@ export default function Movements() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [dateFrom, dateTo, filterCustomer, filterSalesman]);
+  useEffect(() => { load(); }, [dateFrom, dateTo, filterCustomer, filterSalesman, filterIssue]);
 
   const clearFilters = () => {
-    setDateFrom('');
-    setDateTo('');
-    setFilterCustomer('');
-    setFilterSalesman('');
+    setDateFrom(''); setDateTo(''); setFilterCustomer(''); setFilterSalesman(''); setFilterIssue('');
   };
 
-  const activeFilterCount = [dateFrom, dateTo, filterCustomer, filterSalesman].filter(Boolean).length;
+  const activeFilterCount = [dateFrom, dateTo, filterCustomer, filterSalesman, filterIssue].filter(v => v !== '').length;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -62,13 +67,43 @@ export default function Movements() {
 
   const handleEdit = (m) => {
     setForm({ customer_id: m.customer_id, visit_date: m.visit_date, purpose: m.purpose,
-      location: m.location || '', notes: m.notes || '', status: m.status });
+      location: m.location || '', notes: m.notes || '', status: m.status, is_issue: m.is_issue === 1 });
     setEditId(m.id); setShowModal(true);
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this movement?')) return;
+    if (!confirm('Delete this movement and all its comments?')) return;
     await api.delete(`/movements/${id}`); toast.success('Movement deleted'); load();
+  };
+
+  // Comments
+  const openComments = async (movement) => {
+    setCommentModal(movement);
+    setNewComment('');
+    setLoadingComments(true);
+    try {
+      const { data } = await api.get(`/movements/${movement.id}/comments`);
+      setComments(data);
+    } catch { setComments([]); }
+    setLoadingComments(false);
+  };
+
+  const submitComment = async () => {
+    if (!newComment.trim()) return;
+    try {
+      const { data } = await api.post(`/movements/${commentModal.id}/comments`, { comment: newComment });
+      setComments([...comments, data]);
+      setNewComment('');
+      toast.success('Comment added');
+      load(); // refresh comment counts
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to add comment'); }
+  };
+
+  const handleCommentKey = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      submitComment();
+    }
   };
 
   const statusColor = { planned: 'bg-blue-100 text-blue-700', completed: 'bg-green-100 text-green-700', cancelled: 'bg-gray-100 text-gray-700' };
@@ -107,22 +142,15 @@ export default function Movements() {
               </button>
             )}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Date From */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">From Date</label>
-              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                className={inp} />
+              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={inp} />
             </div>
-
-            {/* Date To */}
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">To Date</label>
-              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
-                className={inp} />
+              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className={inp} />
             </div>
-
-            {/* Customer Name */}
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">Customer</label>
               <select value={filterCustomer} onChange={e => setFilterCustomer(e.target.value)} className={inp}>
@@ -130,8 +158,6 @@ export default function Movements() {
                 {customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.company}</option>)}
               </select>
             </div>
-
-            {/* Salesman Name (admin only) */}
             {user?.role === 'admin' && (
               <div>
                 <label className="block text-xs text-gray-500 mb-1.5 font-medium">Salesman</label>
@@ -141,9 +167,15 @@ export default function Movements() {
                 </select>
               </div>
             )}
+            <div>
+              <label className="block text-xs text-gray-500 mb-1.5 font-medium">Maybe an Issue</label>
+              <select value={filterIssue} onChange={e => setFilterIssue(e.target.value)} className={inp}>
+                <option value="">All</option>
+                <option value="1">Issues Only</option>
+                <option value="0">No Issues</option>
+              </select>
+            </div>
           </div>
-
-          {/* Active filters summary */}
           {activeFilterCount > 0 && (
             <div className="flex flex-wrap gap-2 mt-4 pt-3 border-t border-gray-100">
               {dateFrom && (
@@ -170,6 +202,12 @@ export default function Movements() {
                   <button onClick={() => setFilterSalesman('')} className="hover:text-indigo-900 cursor-pointer"><FiX size={12} /></button>
                 </span>
               )}
+              {filterIssue !== '' && (
+                <span className="inline-flex items-center gap-1 bg-orange-50 text-orange-700 text-xs px-2.5 py-1 rounded-full">
+                  {filterIssue === '1' ? 'Issues Only' : 'No Issues'}
+                  <button onClick={() => setFilterIssue('')} className="hover:text-orange-900 cursor-pointer"><FiX size={12} /></button>
+                </span>
+              )}
               <span className="text-xs text-gray-400 flex items-center">{movements.length} results</span>
             </div>
           )}
@@ -181,13 +219,13 @@ export default function Movements() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
-                {['Date', 'Customer', 'Purpose', 'Location', 'Status', 'Salesman', 'Actions'].map(h =>
+                {['Date', 'Customer', 'Purpose', 'Location', 'Status', 'Salesman', '', 'Actions'].map(h =>
                   <th key={h} className="px-4 py-3 text-left font-medium text-gray-600">{h}</th>)}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {movements.map(m => (
-                <tr key={m.id} className="hover:bg-gray-50">
+                <tr key={m.id} className={`hover:bg-gray-50 ${m.is_issue ? 'bg-orange-50/40' : ''}`}>
                   <td className="px-4 py-3 font-medium text-gray-800">{m.visit_date}</td>
                   <td className="px-4 py-3 text-gray-600">{m.customer_name}</td>
                   <td className="px-4 py-3 text-gray-600">{m.purpose}</td>
@@ -196,18 +234,42 @@ export default function Movements() {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor[m.status] || ''}`}>{m.status}</span>
                   </td>
                   <td className="px-4 py-3 text-gray-600">{m.salesman_name}</td>
-                  <td className="px-4 py-3 flex gap-2">
-                    <button onClick={() => handleEdit(m)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer"><FiEdit2 size={16} /></button>
-                    <button onClick={() => handleDelete(m.id)} className="text-red-500 hover:text-red-700 cursor-pointer"><FiTrash2 size={16} /></button>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      {m.is_issue === 1 && (
+                        <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs font-medium" title="Maybe an issue">
+                          <FiAlertTriangle size={11} /> Issue
+                        </span>
+                      )}
+                      {m.comment_count > 0 && (
+                        <span className="inline-flex items-center gap-1 text-gray-500 text-xs" title={`${m.comment_count} comment(s)`}>
+                          <FiMessageSquare size={12} /> {m.comment_count}
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      <button onClick={() => openComments(m)} className="text-gray-500 hover:text-indigo-600 cursor-pointer" title="Comments">
+                        <FiMessageSquare size={16} />
+                      </button>
+                      <button onClick={() => handleEdit(m)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer" title="Edit">
+                        <FiEdit2 size={16} />
+                      </button>
+                      <button onClick={() => handleDelete(m.id)} className="text-red-500 hover:text-red-700 cursor-pointer" title="Delete">
+                        <FiTrash2 size={16} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
-              {movements.length === 0 && <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No movements found</td></tr>}
+              {movements.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">No movements found</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
 
+      {/* Add/Edit Movement Modal */}
       {showModal && (
         <Modal title={editId ? 'Edit Movement' : 'Add Movement'} onClose={() => setShowModal(false)}>
           <form onSubmit={handleSubmit} className="space-y-3">
@@ -236,10 +298,82 @@ export default function Movements() {
               <option value="cancelled">Cancelled</option>
             </select>
             <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder="Notes" className={inp} rows={3} />
+
+            {/* Maybe an Issue checkbox */}
+            <label className="flex items-center gap-2.5 p-3 rounded-lg border border-orange-200 bg-orange-50/50 cursor-pointer select-none">
+              <input type="checkbox" checked={form.is_issue}
+                onChange={e => setForm({...form, is_issue: e.target.checked})}
+                className="w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500" />
+              <div>
+                <span className="text-sm font-medium text-orange-800 flex items-center gap-1">
+                  <FiAlertTriangle size={13} /> Maybe an Issue
+                </span>
+                <span className="text-xs text-orange-600 block">Flag this movement for attention</span>
+              </div>
+            </label>
+
             <button type="submit" className="w-full py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 cursor-pointer">
               {editId ? 'Update Movement' : 'Add Movement'}
             </button>
           </form>
+        </Modal>
+      )}
+
+      {/* Comments Modal */}
+      {commentModal && (
+        <Modal title="Comments" onClose={() => setCommentModal(null)}>
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-medium text-gray-500">{commentModal.visit_date}</span>
+              {commentModal.is_issue === 1 && (
+                <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                  <FiAlertTriangle size={10} /> Issue
+                </span>
+              )}
+            </div>
+            <p className="text-sm font-medium text-gray-800">{commentModal.customer_name}</p>
+            <p className="text-xs text-gray-500">{commentModal.purpose} &middot; {commentModal.salesman_name}</p>
+          </div>
+
+          {/* Comments list */}
+          <div className="space-y-3 max-h-64 overflow-y-auto mb-4">
+            {loadingComments ? (
+              <p className="text-center text-gray-400 text-sm py-4">Loading comments...</p>
+            ) : comments.length === 0 ? (
+              <p className="text-center text-gray-400 text-sm py-4">No comments yet. Be the first to comment.</p>
+            ) : (
+              comments.map(c => (
+                <div key={c.id} className={`p-3 rounded-lg ${c.user_id === user.id ? 'bg-indigo-50 border border-indigo-100 ml-4' : 'bg-gray-50 border border-gray-100 mr-4'}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-semibold text-gray-700">
+                      {c.user_name}
+                      {c.user_role === 'admin' && (
+                        <span className="ml-1.5 bg-indigo-200 text-indigo-800 text-[10px] px-1.5 py-0.5 rounded">Admin</span>
+                      )}
+                    </span>
+                    <span className="text-[10px] text-gray-400">{c.created_at?.replace('T', ' ').substring(0, 16)}</span>
+                  </div>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{c.comment}</p>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Add comment input */}
+          <div className="flex gap-2">
+            <textarea
+              value={newComment}
+              onChange={e => setNewComment(e.target.value)}
+              onKeyDown={handleCommentKey}
+              placeholder="Write a comment... (Enter to send)"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none"
+              rows={2}
+            />
+            <button onClick={submitComment} disabled={!newComment.trim()}
+              className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer self-end">
+              <FiSend size={16} />
+            </button>
+          </div>
         </Modal>
       )}
     </div>
