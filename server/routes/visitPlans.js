@@ -103,6 +103,9 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM daily_visit_plan WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Visit plan not found' });
+  if (req.user.role !== 'admin' && existing.salesman_id !== req.user.id) {
+    return res.status(403).json({ error: 'You can only update your own visit plans' });
+  }
 
   const { customer_id, purpose, remark } = req.body;
   db.prepare('UPDATE daily_visit_plan SET customer_id=?, purpose=?, remark=? WHERE id=?')
@@ -115,6 +118,9 @@ router.put('/:id', (req, res) => {
 router.delete('/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM daily_visit_plan WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Visit plan not found' });
+  if (req.user.role !== 'admin' && existing.salesman_id !== req.user.id) {
+    return res.status(403).json({ error: 'You can only delete your own visit plans' });
+  }
   db.prepare('DELETE FROM daily_visit_plan WHERE id = ?').run(req.params.id);
   res.json({ message: 'Visit plan deleted' });
 });

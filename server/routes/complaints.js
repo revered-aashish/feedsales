@@ -46,6 +46,9 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM complaint WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Complaint not found' });
+  if (req.user.role !== 'admin' && existing.salesman_id !== req.user.id) {
+    return res.status(403).json({ error: 'You can only update your own complaints' });
+  }
 
   const { subject, description, status, resolution } = req.body;
   db.prepare(

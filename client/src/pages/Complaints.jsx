@@ -193,7 +193,9 @@ export default function Complaints() {
                   <td className="px-4 py-3 text-gray-600">{c.salesman_name}</td>
                   <td className="px-4 py-3 text-gray-600">{c.created_at?.split('T')[0]}</td>
                   <td className="px-4 py-3">
-                    <button onClick={() => handleEdit(c)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer"><FiEdit2 size={16} /></button>
+                    {(user?.role === 'admin' || c.salesman_id === user?.id) && (
+                      <button onClick={() => handleEdit(c)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer"><FiEdit2 size={16} /></button>
+                    )}
                   </td>
                 </tr>
               ))}

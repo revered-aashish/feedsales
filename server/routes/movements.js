@@ -52,6 +52,9 @@ router.post('/', (req, res) => {
 router.put('/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM daily_movement WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Movement not found' });
+  if (req.user.role !== 'admin' && existing.salesman_id !== req.user.id) {
+    return res.status(403).json({ error: 'You can only update your own movements' });
+  }
 
   const { customer_id, visit_date, purpose, location, notes, status, is_issue } = req.body;
   db.prepare(
@@ -68,6 +71,9 @@ router.put('/:id', (req, res) => {
 router.delete('/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM daily_movement WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Movement not found' });
+  if (req.user.role !== 'admin' && existing.salesman_id !== req.user.id) {
+    return res.status(403).json({ error: 'You can only delete your own movements' });
+  }
   db.prepare('DELETE FROM movement_comment WHERE movement_id = ?').run(req.params.id);
   db.prepare('DELETE FROM daily_movement WHERE id = ?').run(req.params.id);
   res.json({ message: 'Movement deleted' });
