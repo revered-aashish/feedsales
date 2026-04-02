@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authenticate } from '../middleware/auth.js';
+import PDFDocument from 'pdfkit';
 
 const router = Router();
 router.use(authenticate);
@@ -117,6 +118,127 @@ router.post('/:id/comments', (req, res) => {
   `).get(result.lastInsertRowid);
 
   res.status(201).json(saved);
+});
+
+// --- MOM PDF Download ---
+router.get('/:id/download/pdf', (req, res) => {
+  const movement = db.prepare(`
+    SELECT dm.*, c.name as customer_name, c.company as customer_company, c.city as customer_city,
+      s.name as salesman_name, s.email as salesman_email
+    FROM daily_movement dm
+    JOIN customer c ON dm.customer_id = c.id
+    JOIN salesman s ON dm.salesman_id = s.id
+    WHERE dm.id = ?
+  `).get(req.params.id);
+
+  if (!movement) return res.status(404).json({ error: 'Movement not found' });
+
+  const comments = db.prepare(`
+    SELECT mc.*, s.name as user_name, s.role as user_role
+    FROM movement_comment mc JOIN salesman s ON mc.user_id = s.id
+    WHERE mc.movement_id = ? ORDER BY mc.created_at ASC
+  `).all(req.params.id);
+
+  const doc = new PDFDocument({ size: 'A4', margin: 50 });
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="MOM_${movement.visit_date}_${movement.customer_name.replace(/[^a-zA-Z0-9]/g, '_')}.pdf"`);
+  doc.pipe(res);
+
+  const pageWidth = doc.page.width - 100;
+
+  // Header line
+  doc.moveTo(50, 45).lineTo(50 + pageWidth, 45).strokeColor('#4338ca').lineWidth(3).stroke();
+
+  // Company name
+  doc.fontSize(22).fillColor('#312e81').font('Helvetica-Bold')
+    .text('Feedchem (India) Limited', 50, 55, { align: 'center', width: pageWidth });
+
+  // Subtitle
+  doc.fontSize(12).fillColor('#6366f1').font('Helvetica')
+    .text('Minutes of Meeting', 50, 82, { align: 'center', width: pageWidth });
+
+  // Line below header
+  doc.moveTo(50, 100).lineTo(50 + pageWidth, 100).strokeColor('#4338ca').lineWidth(1).stroke();
+
+  let y = 115;
+
+  // Meeting details box
+  doc.roundedRect(50, y, pageWidth, 90, 5).fillAndStroke('#f5f3ff', '#c7d2fe');
+  y += 12;
+
+  const labelX = 65;
+  const valueX = 170;
+  const labelX2 = 310;
+  const valueX2 = 400;
+
+  const drawField = (label, value, lx, vx, yPos) => {
+    doc.fontSize(9).fillColor('#6b7280').font('Helvetica-Bold').text(label, lx, yPos);
+    doc.fontSize(10).fillColor('#1f2937').font('Helvetica').text(value || 'N/A', vx, yPos, { width: 150 });
+  };
+
+  drawField('Date:', movement.visit_date, labelX, valueX, y);
+  drawField('Status:', movement.status.charAt(0).toUpperCase() + movement.status.slice(1), labelX2, valueX2, y);
+  y += 20;
+  drawField('Customer:', movement.customer_name, labelX, valueX, y);
+  drawField('Company:', movement.customer_company || 'N/A', labelX2, valueX2, y);
+  y += 20;
+  drawField('Location:', movement.location || movement.customer_city || 'N/A', labelX, valueX, y);
+  drawField('Salesman:', movement.salesman_name, labelX2, valueX2, y);
+
+  y = 115 + 90 + 20;
+
+  // Purpose section
+  doc.fontSize(11).fillColor('#312e81').font('Helvetica-Bold').text('Purpose of Visit', 50, y);
+  y += 18;
+  doc.moveTo(50, y).lineTo(50 + pageWidth, y).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
+  y += 8;
+  doc.fontSize(10).fillColor('#374151').font('Helvetica').text(movement.purpose, 55, y, { width: pageWidth - 10 });
+  y += doc.heightOfString(movement.purpose, { width: pageWidth - 10 }) + 15;
+
+  // Notes section
+  if (movement.notes) {
+    doc.fontSize(11).fillColor('#312e81').font('Helvetica-Bold').text('Discussion / Notes', 50, y);
+    y += 18;
+    doc.moveTo(50, y).lineTo(50 + pageWidth, y).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
+    y += 8;
+    doc.fontSize(10).fillColor('#374151').font('Helvetica').text(movement.notes, 55, y, { width: pageWidth - 10 });
+    y += doc.heightOfString(movement.notes, { width: pageWidth - 10 }) + 15;
+  }
+
+  // Issue flag
+  if (movement.is_issue) {
+    doc.roundedRect(50, y, pageWidth, 28, 4).fillAndStroke('#fff7ed', '#fdba74');
+    doc.fontSize(10).fillColor('#c2410c').font('Helvetica-Bold')
+      .text('⚠ This visit has been flagged as a potential issue', 65, y + 8, { width: pageWidth - 30 });
+    y += 40;
+  }
+
+  // Comments section
+  if (comments.length > 0) {
+    doc.fontSize(11).fillColor('#312e81').font('Helvetica-Bold').text('Comments & Follow-up', 50, y);
+    y += 18;
+    doc.moveTo(50, y).lineTo(50 + pageWidth, y).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
+    y += 10;
+
+    for (const c of comments) {
+      if (y > 720) { doc.addPage(); y = 50; }
+      const timestamp = c.created_at?.replace('T', ' ').substring(0, 16) || '';
+      doc.fontSize(9).fillColor('#6366f1').font('Helvetica-Bold')
+        .text(`${c.user_name}${c.user_role === 'admin' ? ' (Admin)' : ''}`, 55, y, { continued: true })
+        .fillColor('#9ca3af').font('Helvetica').text(`  ${timestamp}`);
+      y += 14;
+      doc.fontSize(10).fillColor('#374151').font('Helvetica').text(c.comment, 60, y, { width: pageWidth - 20 });
+      y += doc.heightOfString(c.comment, { width: pageWidth - 20 }) + 12;
+    }
+  }
+
+  // Footer
+  const footerY = doc.page.height - 50;
+  doc.moveTo(50, footerY).lineTo(50 + pageWidth, footerY).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
+  doc.fontSize(8).fillColor('#9ca3af').font('Helvetica')
+    .text(`Generated on ${new Date().toISOString().split('T')[0]} | Feedchem (India) Limited | Confidential`, 50, footerY + 8, { align: 'center', width: pageWidth });
+
+  doc.end();
 });
 
 export default router;

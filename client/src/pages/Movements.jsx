@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
-import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX, FiMessageSquare, FiAlertTriangle, FiSend } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX, FiMessageSquare, FiAlertTriangle, FiSend, FiDownload } from 'react-icons/fi';
 
 const today = new Date().toISOString().split('T')[0];
 const emptyForm = { customer_id: '', visit_date: today, purpose: '', location: '', notes: '', status: 'planned', is_issue: false };
@@ -104,6 +104,23 @@ export default function Movements() {
       e.preventDefault();
       submitComment();
     }
+  };
+
+  const downloadMOM = async (id) => {
+    try {
+      const response = await api.get(`/movements/${id}/download/pdf`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      const disposition = response.headers['content-disposition'];
+      const filename = disposition ? disposition.split('filename="')[1]?.replace('"', '') : `MOM_${id}.pdf`;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('PDF downloaded');
+    } catch { toast.error('Failed to download PDF'); }
   };
 
   const statusColor = { planned: 'bg-blue-100 text-blue-700', completed: 'bg-green-100 text-green-700', cancelled: 'bg-gray-100 text-gray-700' };
@@ -250,6 +267,9 @@ export default function Movements() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
+                      <button onClick={() => downloadMOM(m.id)} className="text-gray-500 hover:text-green-600 cursor-pointer" title="Download MOM PDF">
+                        <FiDownload size={16} />
+                      </button>
                       <button onClick={() => openComments(m)} className="text-gray-500 hover:text-indigo-600 cursor-pointer" title="Comments">
                         <FiMessageSquare size={16} />
                       </button>
