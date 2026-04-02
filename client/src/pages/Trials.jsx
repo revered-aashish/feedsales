@@ -202,12 +202,14 @@ export default function Trials() {
                   <td className="px-4 py-3 text-gray-600">{t.start_date}</td>
                   <td className="px-4 py-3 text-gray-600">{t.salesman_name}</td>
                   <td className="px-4 py-3">
-                    {(user?.role === 'admin' || t.salesman_id === user?.id) && (
-                      <div className="flex gap-2">
+                    <div className="flex gap-2">
+                      {(user?.role === 'admin' || t.salesman_id === user?.id) && (
                         <button onClick={() => handleEdit(t)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer"><FiEdit2 size={16} /></button>
+                      )}
+                      {user?.role === 'admin' && (
                         <button onClick={() => handleDelete(t.id)} className="text-red-500 hover:text-red-700 cursor-pointer"><FiTrash2 size={16} /></button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

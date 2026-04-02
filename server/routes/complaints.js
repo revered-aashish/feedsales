@@ -59,6 +59,15 @@ router.put('/:id', (req, res) => {
   res.json(db.prepare('SELECT * FROM complaint WHERE id = ?').get(req.params.id));
 });
 
-// No DELETE for complaints (CRU only)
+// Delete complaint — admin only
+router.delete('/:id', (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Only admin can delete complaints' });
+  }
+  const existing = db.prepare('SELECT * FROM complaint WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Complaint not found' });
+  db.prepare('DELETE FROM complaint WHERE id = ?').run(req.params.id);
+  res.json({ message: 'Complaint deleted' });
+});
 
 export default router;

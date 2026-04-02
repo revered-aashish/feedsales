@@ -274,14 +274,14 @@ export default function Movements() {
                         <FiMessageSquare size={16} />
                       </button>
                       {(user?.role === 'admin' || m.salesman_id === user?.id) && (
-                        <>
-                          <button onClick={() => handleEdit(m)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer" title="Edit">
-                            <FiEdit2 size={16} />
-                          </button>
-                          <button onClick={() => handleDelete(m.id)} className="text-red-500 hover:text-red-700 cursor-pointer" title="Delete">
-                            <FiTrash2 size={16} />
-                          </button>
-                        </>
+                        <button onClick={() => handleEdit(m)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer" title="Edit">
+                          <FiEdit2 size={16} />
+                        </button>
+                      )}
+                      {user?.role === 'admin' && (
+                        <button onClick={() => handleDelete(m.id)} className="text-red-500 hover:text-red-700 cursor-pointer" title="Delete">
+                          <FiTrash2 size={16} />
+                        </button>
                       )}
                     </div>
                   </td>

@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
-import { FiPlus, FiEdit2, FiFilter, FiX } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX } from 'react-icons/fi';
 
 const emptyForm = { customer_id: '', subject: '', description: '', status: 'open', resolution: '' };
 
@@ -62,6 +62,12 @@ export default function Complaints() {
     setForm({ customer_id: c.customer_id, subject: c.subject, description: c.description || '',
       status: c.status, resolution: c.resolution || '' });
     setEditId(c.id); setShowModal(true);
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Delete this complaint?')) return;
+    try { await api.delete(`/complaints/${id}`); toast.success('Complaint deleted'); load(); }
+    catch (err) { toast.error(err.response?.data?.error || 'Error'); }
   };
 
   const statusColor = { open: 'bg-red-100 text-red-700', in_progress: 'bg-yellow-100 text-yellow-700', resolved: 'bg-green-100 text-green-700' };
@@ -193,9 +199,14 @@ export default function Complaints() {
                   <td className="px-4 py-3 text-gray-600">{c.salesman_name}</td>
                   <td className="px-4 py-3 text-gray-600">{c.created_at?.split('T')[0]}</td>
                   <td className="px-4 py-3">
-                    {(user?.role === 'admin' || c.salesman_id === user?.id) && (
-                      <button onClick={() => handleEdit(c)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer"><FiEdit2 size={16} /></button>
-                    )}
+                    <div className="flex gap-2">
+                      {(user?.role === 'admin' || c.salesman_id === user?.id) && (
+                        <button onClick={() => handleEdit(c)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer"><FiEdit2 size={16} /></button>
+                      )}
+                      {user?.role === 'admin' && (
+                        <button onClick={() => handleDelete(c.id)} className="text-red-500 hover:text-red-700 cursor-pointer"><FiTrash2 size={16} /></button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

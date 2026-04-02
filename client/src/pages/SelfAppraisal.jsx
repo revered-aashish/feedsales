@@ -232,12 +232,14 @@ export default function SelfAppraisal() {
                     <td className="px-3 py-2.5 text-center font-mono text-xs font-semibold text-gray-800">{a.coalseam_sales || 0}</td>
                     <td className="px-3 py-2.5 text-center">{pctBadge(pct(totalS, totalT))}</td>
                     <td className="px-3 py-2.5 text-center" onClick={e => e.stopPropagation()}>
-                      {canEdit && (
-                        <div className="flex justify-center gap-2">
+                      <div className="flex justify-center gap-2">
+                        {canEdit && (
                           <button onClick={() => handleEdit(a)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer"><FiEdit2 size={14} /></button>
+                        )}
+                        {isAdmin && (
                           <button onClick={() => handleDelete(a.id)} className="text-red-500 hover:text-red-700 cursor-pointer"><FiTrash2 size={14} /></button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

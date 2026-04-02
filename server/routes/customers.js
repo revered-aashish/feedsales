@@ -114,16 +114,29 @@ router.put('/:id', (req, res) => {
   res.json(customer);
 });
 
-// Delete customer
+// Delete customer — admin only, cascade deletes related entries
 router.delete('/:id', (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Only admin can delete customers' });
+  }
   const existing = db.prepare('SELECT * FROM customer WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Customer not found' });
 
-  db.prepare('DELETE FROM daily_movement WHERE customer_id = ?').run(req.params.id);
-  db.prepare('DELETE FROM complaint WHERE customer_id = ?').run(req.params.id);
-  db.prepare('DELETE FROM trial WHERE customer_id = ?').run(req.params.id);
-  db.prepare('DELETE FROM customer WHERE id = ?').run(req.params.id);
-  res.json({ message: 'Customer deleted' });
+  const deleteCustomer = db.transaction(() => {
+    // Delete comments on movements for this customer
+    const movementIds = db.prepare('SELECT id FROM daily_movement WHERE customer_id = ?').all(req.params.id);
+    for (const m of movementIds) {
+      db.prepare('DELETE FROM movement_comment WHERE movement_id = ?').run(m.id);
+    }
+    db.prepare('DELETE FROM daily_movement WHERE customer_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM daily_visit_plan WHERE customer_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM complaint WHERE customer_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM trial WHERE customer_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM customer WHERE id = ?').run(req.params.id);
+  });
+
+  deleteCustomer();
+  res.json({ message: 'Customer and all related entries deleted' });
 });
 
 export default router;

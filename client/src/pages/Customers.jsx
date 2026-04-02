@@ -196,7 +196,9 @@ export default function Customers() {
                   </td>
                   <td className="px-4 py-3 flex gap-2">
                     <button onClick={() => handleEdit(c)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer"><FiEdit2 size={16} /></button>
-                    <button onClick={() => handleDelete(c.id)} className="text-red-500 hover:text-red-700 cursor-pointer"><FiTrash2 size={16} /></button>
+                    {user?.role === 'admin' && (
+                      <button onClick={() => handleDelete(c.id)} className="text-red-500 hover:text-red-700 cursor-pointer"><FiTrash2 size={16} /></button>
+                    )}
                   </td>
                 </tr>
               ))}

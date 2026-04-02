@@ -116,11 +116,11 @@ router.put('/:id', (req, res) => {
 
 // Delete a single visit plan
 router.delete('/:id', (req, res) => {
+  if (req.user.role !== 'admin') {
+    return res.status(403).json({ error: 'Only admin can delete visit plans' });
+  }
   const existing = db.prepare('SELECT * FROM daily_visit_plan WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Visit plan not found' });
-  if (req.user.role !== 'admin' && existing.salesman_id !== req.user.id) {
-    return res.status(403).json({ error: 'You can only delete your own visit plans' });
-  }
   db.prepare('DELETE FROM daily_visit_plan WHERE id = ?').run(req.params.id);
   res.json({ message: 'Visit plan deleted' });
 });
