@@ -179,8 +179,8 @@ router.get('/:id/download/pdf', (req, res) => {
   drawField('Date:', movement.visit_date, labelX, valueX, y);
   drawField('Status:', movement.status.charAt(0).toUpperCase() + movement.status.slice(1), labelX2, valueX2, y);
   y += 20;
-  drawField('Customer:', movement.customer_name, labelX, valueX, y);
-  drawField('Company:', movement.customer_company || 'N/A', labelX2, valueX2, y);
+  drawField('Company:', movement.customer_company || movement.customer_name, labelX, valueX, y);
+  drawField('Contact:', movement.customer_name, labelX2, valueX2, y);
   y += 20;
   drawField('Location:', movement.location || movement.customer_city || 'N/A', labelX, valueX, y);
   drawField('Salesman:', movement.salesman_name, labelX2, valueX2, y);

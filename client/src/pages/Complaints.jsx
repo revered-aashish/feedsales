@@ -113,7 +113,7 @@ export default function Complaints() {
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">Customer</label>
               <select value={filterCustomer} onChange={e => setFilterCustomer(e.target.value)} className={inp}>
                 <option value="">All Customers</option>
-                {customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.company}</option>)}
+                {customers.map(c => <option key={c.id} value={c.id}>{c.company || c.name}</option>)}
               </select>
             </div>
             {user?.role === 'admin' && (
@@ -151,7 +151,7 @@ export default function Complaints() {
               )}
               {filterCustomer && (
                 <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full">
-                  Customer: {customers.find(c => c.id == filterCustomer)?.name}
+                  Customer: {customers.find(c => c.id == filterCustomer)?.company || customers.find(c => c.id == filterCustomer)?.name}
                   <button onClick={() => setFilterCustomer('')} className="hover:text-indigo-900 cursor-pointer"><FiX size={12} /></button>
                 </span>
               )}
@@ -185,7 +185,7 @@ export default function Complaints() {
             <tbody className="divide-y divide-gray-100">
               {complaints.map(c => (
                 <tr key={c.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-800">{c.customer_name}</td>
+                  <td className="px-4 py-3 font-medium text-gray-800">{c.customer_company || c.customer_name}</td>
                   <td className="px-4 py-3 text-gray-600">{c.subject}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor[c.status] || ''}`}>{c.status}</span>
@@ -210,7 +210,7 @@ export default function Complaints() {
           <form onSubmit={handleSubmit} className="space-y-3">
             <select value={form.customer_id} onChange={e => setForm({...form, customer_id: e.target.value})} className={inp} required>
               <option value="">Select Customer *</option>
-              {customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.company}</option>)}
+              {customers.map(c => <option key={c.id} value={c.id}>{c.company || c.name}</option>)}
             </select>
             <input value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} placeholder="Subject *" className={inp} required />
             <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Description" className={inp} rows={3} />

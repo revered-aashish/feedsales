@@ -180,7 +180,7 @@ export default function VisitPlans() {
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">Customer</label>
               <select value={filterCustomer} onChange={e => setFilterCustomer(e.target.value)} className={inp}>
                 <option value="">All Customers</option>
-                {customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.company}</option>)}
+                {customers.map(c => <option key={c.id} value={c.id}>{c.company || c.name}</option>)}
               </select>
             </div>
             {user?.role === 'admin' && (
@@ -207,7 +207,7 @@ export default function VisitPlans() {
               )}
               {filterCustomer && (
                 <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full">
-                  Customer: {customers.find(c => c.id == filterCustomer)?.name}
+                  Customer: {customers.find(c => c.id == filterCustomer)?.company || customers.find(c => c.id == filterCustomer)?.name}
                   <button onClick={() => setFilterCustomer('')} className="hover:text-indigo-900 cursor-pointer"><FiX size={12} /></button>
                 </span>
               )}
@@ -246,7 +246,7 @@ export default function VisitPlans() {
                   <td className="px-4 py-3 text-gray-600">
                     <div className="flex flex-wrap gap-1">
                       {g.items.slice(0, 3).map((item, i) => (
-                        <span key={i} className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs">{item.customer_name}</span>
+                        <span key={i} className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs">{item.customer_company || item.customer_name}</span>
                       ))}
                       {g.items.length > 3 && (
                         <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded text-xs">+{g.items.length - 3} more</span>
@@ -303,7 +303,7 @@ export default function VisitPlans() {
                       <option value="">Select Customer *</option>
                       {customers.map(c => (
                         <option key={c.id} value={c.id} disabled={slots.some((s, i) => i !== index && s.customer_id === String(c.id))}>
-                          {c.name} - {c.company}
+                          {c.company || c.name}
                         </option>
                       ))}
                     </select>
@@ -340,7 +340,7 @@ export default function VisitPlans() {
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs text-gray-400 mr-2">#{p.slot_number}</span>
-                    <span className="font-medium text-gray-800 text-sm">{p.customer_name}</span>
+                    <span className="font-medium text-gray-800 text-sm">{p.customer_company || p.customer_name}</span>
                     {p.customer_company && <span className="text-gray-400 text-xs ml-1">({p.customer_company})</span>}
                   </div>
                 </div>

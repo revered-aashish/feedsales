@@ -172,7 +172,7 @@ export default function Movements() {
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">Customer</label>
               <select value={filterCustomer} onChange={e => setFilterCustomer(e.target.value)} className={inp}>
                 <option value="">All Customers</option>
-                {customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.company}</option>)}
+                {customers.map(c => <option key={c.id} value={c.id}>{c.company || c.name}</option>)}
               </select>
             </div>
             {user?.role === 'admin' && (
@@ -209,7 +209,7 @@ export default function Movements() {
               )}
               {filterCustomer && (
                 <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full">
-                  Customer: {customers.find(c => c.id == filterCustomer)?.name}
+                  Customer: {customers.find(c => c.id == filterCustomer)?.company || customers.find(c => c.id == filterCustomer)?.name}
                   <button onClick={() => setFilterCustomer('')} className="hover:text-indigo-900 cursor-pointer"><FiX size={12} /></button>
                 </span>
               )}
@@ -244,7 +244,7 @@ export default function Movements() {
               {movements.map(m => (
                 <tr key={m.id} className={`hover:bg-gray-50 ${m.is_issue ? 'bg-orange-50/40' : ''}`}>
                   <td className="px-4 py-3 font-medium text-gray-800">{m.visit_date}</td>
-                  <td className="px-4 py-3 text-gray-600">{m.customer_name}</td>
+                  <td className="px-4 py-3 text-gray-600">{m.customer_company || m.customer_name}</td>
                   <td className="px-4 py-3 text-gray-600">{m.purpose}</td>
                   <td className="px-4 py-3 text-gray-600">{m.location}</td>
                   <td className="px-4 py-3">
@@ -299,7 +299,7 @@ export default function Movements() {
           <form onSubmit={handleSubmit} className="space-y-3">
             <select value={form.customer_id} onChange={e => setForm({...form, customer_id: e.target.value})} className={inp} required>
               <option value="">Select Customer *</option>
-              {customers.map(c => <option key={c.id} value={c.id}>{c.name} - {c.company}</option>)}
+              {customers.map(c => <option key={c.id} value={c.id}>{c.company || c.name}</option>)}
             </select>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Visit Date *</label>
