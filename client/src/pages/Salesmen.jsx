@@ -4,7 +4,7 @@ import { Navigate } from 'react-router-dom';
 import api from '../api';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
-import { FiPlus, FiEdit2, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiEye, FiEyeOff } from 'react-icons/fi';
 
 const emptyForm = { name: '', email: '', password: '', phone: '', role: 'salesman' };
 
@@ -65,6 +65,16 @@ export default function Salesmen() {
     setEditId(s.id);
     setShowPassword(false);
     setShowModal(true);
+  };
+
+  const handleDelete = async (s) => {
+    if (s.id === user.id) return toast.error("You cannot delete your own account");
+    if (!confirm(`Delete "${s.name}"? All linked customers, trials, complaints, movements, and visit plans will be reassigned to an admin.`)) return;
+    try {
+      await api.delete(`/salesman/${s.id}`);
+      toast.success('Salesman deleted and records reassigned');
+      load();
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to delete'); }
   };
 
   const toggleActive = async (s) => {
@@ -129,9 +139,16 @@ export default function Salesmen() {
                   </td>
                   <td className="px-4 py-3 text-gray-600">{s.created_at?.split(' ')[0]}</td>
                   <td className="px-4 py-3">
-                    <button onClick={() => handleEdit(s)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer">
-                      <FiEdit2 size={16} />
-                    </button>
+                    <div className="flex gap-2">
+                      <button onClick={() => handleEdit(s)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer" title="Edit">
+                        <FiEdit2 size={16} />
+                      </button>
+                      {s.id !== user.id && (
+                        <button onClick={() => handleDelete(s)} className="text-red-500 hover:text-red-700 cursor-pointer" title="Delete">
+                          <FiTrash2 size={16} />
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}

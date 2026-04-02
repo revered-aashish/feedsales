@@ -49,4 +49,34 @@ router.put('/:id', adminOnly, (req, res) => {
   res.json(salesman);
 });
 
+router.delete('/:id', adminOnly, (req, res) => {
+  const target = db.prepare('SELECT * FROM salesman WHERE id = ?').get(req.params.id);
+  if (!target) return res.status(404).json({ error: 'Salesman not found' });
+  if (target.role === 'admin' && target.id === req.user.id) {
+    return res.status(400).json({ error: 'You cannot delete your own admin account' });
+  }
+
+  // Find an admin to reassign linked records to (prefer the current user)
+  const admin = db.prepare('SELECT id FROM salesman WHERE role = ? AND id != ? LIMIT 1')
+    .get('admin', req.params.id);
+  if (!admin) return res.status(400).json({ error: 'No admin available to reassign records' });
+
+  const reassignTo = admin.id;
+
+  // Reassign all linked records in a transaction
+  const deleteSalesman = db.transaction(() => {
+    db.prepare('UPDATE customer SET salesman_id = ? WHERE salesman_id = ?').run(reassignTo, req.params.id);
+    db.prepare('UPDATE trial SET salesman_id = ? WHERE salesman_id = ?').run(reassignTo, req.params.id);
+    db.prepare('UPDATE complaint SET salesman_id = ? WHERE salesman_id = ?').run(reassignTo, req.params.id);
+    db.prepare('UPDATE daily_movement SET salesman_id = ? WHERE salesman_id = ?').run(reassignTo, req.params.id);
+    db.prepare('UPDATE daily_visit_plan SET salesman_id = ? WHERE salesman_id = ?').run(reassignTo, req.params.id);
+    db.prepare('UPDATE movement_comment SET user_id = ? WHERE user_id = ?').run(reassignTo, req.params.id);
+    db.prepare('DELETE FROM self_appraisal WHERE salesman_id = ?').run(req.params.id);
+    db.prepare('DELETE FROM salesman WHERE id = ?').run(req.params.id);
+  });
+
+  deleteSalesman();
+  res.json({ message: `Salesman deleted. Linked records reassigned to admin.` });
+});
+
 export default router;
