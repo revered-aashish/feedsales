@@ -208,7 +208,6 @@ export default function Customers() {
         <Modal title={editId ? 'Edit Customer' : 'Add Customer'} onClose={() => setShowModal(false)}>
           <form onSubmit={handleSubmit} className="space-y-3">
             <input value={form.company} onChange={e => setForm({...form, company: e.target.value})} placeholder="Company Name *" className={inp} required />
-            <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Contact Person" className={inp} />
             <div className="grid grid-cols-2 gap-3">
               <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="Phone" className={inp} />
               <input value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="Email" className={inp} />
