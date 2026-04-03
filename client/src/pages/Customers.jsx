@@ -33,9 +33,7 @@ export default function Customers() {
 
   useEffect(() => { load(); }, [search, filterSalesman, filterCity, filterStatus]);
   useEffect(() => {
-    if (user?.role === 'admin') {
-      api.get('/salesman').then(r => setSalesmen(r.data));
-    }
+    api.get('/salesman').then(r => setSalesmen(r.data));
   }, []);
 
   // Get unique cities from loaded customers for filter dropdown
@@ -115,15 +113,13 @@ export default function Customers() {
             )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {user?.role === 'admin' && (
-              <div>
-                <label className="block text-xs text-gray-500 mb-1.5 font-medium">Salesman</label>
-                <select value={filterSalesman} onChange={e => setFilterSalesman(e.target.value)} className={inp}>
-                  <option value="">All Salesmen</option>
-                  {salesmen.filter(s => s.role === 'salesman').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-            )}
+            <div>
+              <label className="block text-xs text-gray-500 mb-1.5 font-medium">Salesman</label>
+              <select value={filterSalesman} onChange={e => setFilterSalesman(e.target.value)} className={inp}>
+                <option value="">All Salesmen</option>
+                {salesmen.filter(s => s.role === 'salesman').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">City</label>
               <select value={filterCity} onChange={e => setFilterCity(e.target.value)} className={inp}>
@@ -211,8 +207,8 @@ export default function Customers() {
       {showModal && (
         <Modal title={editId ? 'Edit Customer' : 'Add Customer'} onClose={() => setShowModal(false)}>
           <form onSubmit={handleSubmit} className="space-y-3">
-            <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Customer Name *" className={inp} required />
-            <input value={form.company} onChange={e => setForm({...form, company: e.target.value})} placeholder="Company" className={inp} />
+            <input value={form.company} onChange={e => setForm({...form, company: e.target.value})} placeholder="Company Name *" className={inp} required />
+            <input value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Contact Person" className={inp} />
             <div className="grid grid-cols-2 gap-3">
               <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="Phone" className={inp} />
               <input value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="Email" className={inp} />

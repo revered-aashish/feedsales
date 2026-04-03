@@ -27,9 +27,7 @@ export default function LostCustomers() {
   };
 
   useEffect(() => {
-    if (user?.role === 'admin') {
-      api.get('/salesman').then(r => setSalesmen(r.data));
-    }
+    api.get('/salesman').then(r => setSalesmen(r.data));
   }, []);
 
   useEffect(() => { load(); }, [search, dateFrom, dateTo, filterSalesman, filterCity]);
@@ -83,15 +81,13 @@ export default function LostCustomers() {
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">Lost To Date</label>
               <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className={inp} />
             </div>
-            {user?.role === 'admin' && (
-              <div>
-                <label className="block text-xs text-gray-500 mb-1.5 font-medium">Salesman</label>
-                <select value={filterSalesman} onChange={e => setFilterSalesman(e.target.value)} className={inp}>
-                  <option value="">All Salesmen</option>
-                  {salesmen.filter(s => s.role === 'salesman').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-            )}
+            <div>
+              <label className="block text-xs text-gray-500 mb-1.5 font-medium">Salesman</label>
+              <select value={filterSalesman} onChange={e => setFilterSalesman(e.target.value)} className={inp}>
+                <option value="">All Salesmen</option>
+                {salesmen.filter(s => s.role === 'salesman').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">City</label>
               <select value={filterCity} onChange={e => setFilterCity(e.target.value)} className={inp}>

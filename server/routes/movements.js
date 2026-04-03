@@ -22,7 +22,6 @@ router.get('/', (req, res) => {
   if (date_from) { query += ' AND dm.visit_date >= ?'; params.push(date_from); }
   if (date_to) { query += ' AND dm.visit_date <= ?'; params.push(date_to); }
   if (is_issue !== undefined) { query += ' AND dm.is_issue = ?'; params.push(is_issue); }
-  if (req.user.role !== 'admin') { query += ' AND dm.salesman_id = ?'; params.push(req.user.id); }
 
   query += ' ORDER BY dm.visit_date DESC, dm.created_at DESC';
   res.json(db.prepare(query).all(...params));

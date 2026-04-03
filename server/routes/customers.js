@@ -30,12 +30,6 @@ router.get('/', (req, res) => {
     params.push(s, s, s);
   }
 
-  // Non-admin salesmen only see their own customers
-  if (req.user.role !== 'admin') {
-    query += ' AND c.salesman_id = ?';
-    params.push(req.user.id);
-  }
-
   query += ' ORDER BY c.created_at DESC';
   const customers = db.prepare(query).all(...params);
   res.json(customers);
@@ -57,11 +51,6 @@ router.get('/lost', (req, res) => {
     const s = `%${search}%`;
     params.push(s, s);
   }
-  if (req.user.role !== 'admin') {
-    query += ' AND c.salesman_id = ?';
-    params.push(req.user.id);
-  }
-
   query += ' ORDER BY c.lost_date DESC';
   const customers = db.prepare(query).all(...params);
   res.json(customers);
@@ -78,7 +67,7 @@ router.get('/:id', (req, res) => {
 // Create customer
 router.post('/', (req, res) => {
   const { name, company, phone, email, address, city, state, salesman_id } = req.body;
-  if (!name) return res.status(400).json({ error: 'Customer name is required' });
+  if (!company) return res.status(400).json({ error: 'Company name is required' });
 
   const assignedSalesman = salesman_id || req.user.id;
   const result = db.prepare(

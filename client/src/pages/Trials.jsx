@@ -36,9 +36,7 @@ export default function Trials() {
 
   useEffect(() => {
     api.get('/customers').then(r => setCustomers(r.data));
-    if (user?.role === 'admin') {
-      api.get('/salesman').then(r => setSalesmen(r.data));
-    }
+    api.get('/salesman').then(r => setSalesmen(r.data));
   }, []);
 
   useEffect(() => { load(); }, [dateFrom, dateTo, filterCustomer, filterSalesman, filterStatus]);
@@ -123,15 +121,13 @@ export default function Trials() {
                 {customers.map(c => <option key={c.id} value={c.id}>{c.company || c.name}</option>)}
               </select>
             </div>
-            {user?.role === 'admin' && (
-              <div>
-                <label className="block text-xs text-gray-500 mb-1.5 font-medium">Salesman</label>
-                <select value={filterSalesman} onChange={e => setFilterSalesman(e.target.value)} className={inp}>
-                  <option value="">All Salesmen</option>
-                  {salesmen.filter(s => s.role === 'salesman').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                </select>
-              </div>
-            )}
+            <div>
+              <label className="block text-xs text-gray-500 mb-1.5 font-medium">Salesman</label>
+              <select value={filterSalesman} onChange={e => setFilterSalesman(e.target.value)} className={inp}>
+                <option value="">All Salesmen</option>
+                {salesmen.filter(s => s.role === 'salesman').map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">Status</label>
               <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={inp}>

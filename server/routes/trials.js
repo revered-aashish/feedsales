@@ -18,7 +18,6 @@ router.get('/', (req, res) => {
   if (status) { query += ' AND t.status = ?'; params.push(status); }
   if (date_from) { query += ' AND t.start_date >= ?'; params.push(date_from); }
   if (date_to) { query += ' AND t.start_date <= ?'; params.push(date_to); }
-  if (req.user.role !== 'admin') { query += ' AND t.salesman_id = ?'; params.push(req.user.id); }
 
   query += ' ORDER BY t.created_at DESC';
   res.json(db.prepare(query).all(...params));

@@ -19,7 +19,6 @@ router.get('/', (req, res) => {
   if (visit_date) { query += ' AND vp.visit_date = ?'; params.push(visit_date); }
   if (date_from) { query += ' AND vp.visit_date >= ?'; params.push(date_from); }
   if (date_to) { query += ' AND vp.visit_date <= ?'; params.push(date_to); }
-  if (req.user.role !== 'admin') { query += ' AND vp.salesman_id = ?'; params.push(req.user.id); }
 
   query += ' ORDER BY vp.visit_date DESC, vp.salesman_id, vp.slot_number ASC';
   res.json(db.prepare(query).all(...params));
