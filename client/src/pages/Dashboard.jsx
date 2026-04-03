@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { FiUsers, FiClipboard, FiAlertCircle, FiMapPin, FiUserX, FiCalendar } from 'react-icons/fi';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({ customers: 0, trials: 0, complaints: 0, movements: 0, lostCustomers: 0, visitPlans: 0 });
 
   useEffect(() => {
@@ -28,12 +30,12 @@ export default function Dashboard() {
   }, []);
 
   const cards = [
-    { label: 'Total Customers', value: stats.customers, icon: FiUsers, color: 'bg-blue-500' },
-    { label: 'Active Trials', value: stats.trials, icon: FiClipboard, color: 'bg-green-500' },
-    { label: 'Complaints', value: stats.complaints, icon: FiAlertCircle, color: 'bg-orange-500' },
-    { label: 'Visit Plans', value: stats.visitPlans, icon: FiCalendar, color: 'bg-indigo-500' },
-    { label: 'Movements Achieved', value: stats.movements, icon: FiMapPin, color: 'bg-purple-500' },
-    { label: 'Lost Customers', value: stats.lostCustomers, icon: FiUserX, color: 'bg-red-500' },
+    { label: 'Total Customers', value: stats.customers, icon: FiUsers, color: 'bg-blue-500', path: '/customers' },
+    { label: 'Active Trials', value: stats.trials, icon: FiClipboard, color: 'bg-green-500', path: '/trials' },
+    { label: 'Complaints', value: stats.complaints, icon: FiAlertCircle, color: 'bg-orange-500', path: '/complaints' },
+    { label: 'Visit Plans', value: stats.visitPlans, icon: FiCalendar, color: 'bg-indigo-500', path: '/visit-plans' },
+    { label: 'Movements Achieved', value: stats.movements, icon: FiMapPin, color: 'bg-purple-500', path: '/movements' },
+    { label: 'Lost Customers', value: stats.lostCustomers, icon: FiUserX, color: 'bg-red-500', path: '/lost-customers' },
   ];
 
   return (
@@ -44,8 +46,9 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-5">
-        {cards.map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+        {cards.map(({ label, value, icon: Icon, color, path }) => (
+          <div key={label} onClick={() => navigate(path)}
+            className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 cursor-pointer hover:shadow-md hover:border-gray-200 transition-all">
             <div className="flex items-center justify-between mb-3">
               <span className="text-sm text-gray-500">{label}</span>
               <div className={`${color} text-white p-2 rounded-lg`}><Icon size={18} /></div>
