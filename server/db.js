@@ -145,6 +145,17 @@ db.exec(`
     UNIQUE(salesman_id, month, year)
   );
 
+  CREATE TABLE IF NOT EXISTS complaint_comment (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    complaint_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    comment TEXT NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (complaint_id) REFERENCES complaint(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES salesman(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_complaint_comment ON complaint_comment(complaint_id);
   CREATE INDEX IF NOT EXISTS idx_appraisal_salesman ON self_appraisal(salesman_id);
   CREATE INDEX IF NOT EXISTS idx_appraisal_period ON self_appraisal(year, month);
   CREATE INDEX IF NOT EXISTS idx_movement_comment_movement ON movement_comment(movement_id);
