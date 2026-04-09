@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
-import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX, FiMessageSquare, FiDownload, FiSend } from 'react-icons/fi';
 
 const emptyForm = { customer_id: '', subject: '', description: '', status: 'open', resolution: '' };
 
@@ -23,6 +23,12 @@ export default function Complaints() {
   const [filterCustomer, setFilterCustomer] = useState('');
   const [filterSalesman, setFilterSalesman] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+
+  // Comments
+  const [commentModal, setCommentModal] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
+  const [loadingComments, setLoadingComments] = useState(false);
 
   const load = () => {
     const params = {};
@@ -63,9 +69,54 @@ export default function Complaints() {
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this complaint?')) return;
+    if (!confirm('Delete this complaint and all its comments?')) return;
     try { await api.delete(`/complaints/${id}`); toast.success('Complaint deleted'); load(); }
     catch (err) { toast.error(err.response?.data?.error || 'Error'); }
+  };
+
+  // Comments
+  const openComments = async (complaint) => {
+    setCommentModal(complaint);
+    setNewComment('');
+    setLoadingComments(true);
+    try {
+      const { data } = await api.get(`/complaints/${complaint.id}/comments`);
+      setComments(data);
+    } catch { setComments([]); }
+    setLoadingComments(false);
+  };
+
+  const submitComment = async () => {
+    if (!newComment.trim()) return;
+    try {
+      const { data } = await api.post(`/complaints/${commentModal.id}/comments`, { comment: newComment });
+      setComments([...comments, data]);
+      setNewComment('');
+      toast.success('Comment added');
+      load();
+    } catch (err) { toast.error(err.response?.data?.error || 'Failed to add comment'); }
+  };
+
+  const handleCommentKey = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment(); }
+  };
+
+  // PDF Download
+  const downloadPDF = async (id) => {
+    try {
+      const response = await api.get(`/complaints/${id}/download/pdf`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      const disposition = response.headers['content-disposition'];
+      const filename = disposition ? disposition.split('filename="')[1]?.replace('"', '') : `Complaint_${id}.pdf`;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('PDF downloaded');
+    } catch { toast.error('Failed to download PDF'); }
   };
 
   const statusColor = { open: 'bg-red-100 text-red-700', in_progress: 'bg-yellow-100 text-yellow-700', resolved: 'bg-green-100 text-green-700' };
@@ -180,7 +231,7 @@ export default function Complaints() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
-                {['Customer', 'Subject', 'Status', 'Salesman', 'Created', 'Actions'].map(h =>
+                {['Customer', 'Subject', 'Status', 'Salesman', 'Created', '', 'Actions'].map(h =>
                   <th key={h} className="px-4 py-3 text-left font-medium text-gray-600">{h}</th>)}
               </tr>
             </thead>
@@ -195,23 +246,41 @@ export default function Complaints() {
                   <td className="px-4 py-3 text-gray-600">{c.salesman_name}</td>
                   <td className="px-4 py-3 text-gray-600">{c.created_at?.split('T')[0]}</td>
                   <td className="px-4 py-3">
+                    {c.comment_count > 0 && (
+                      <span className="inline-flex items-center gap-1 text-gray-500 text-xs" title={`${c.comment_count} comment(s)`}>
+                        <FiMessageSquare size={12} /> {c.comment_count}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
                     <div className="flex gap-2">
+                      <button onClick={() => downloadPDF(c.id)} className="text-gray-500 hover:text-green-600 cursor-pointer" title="Download PDF">
+                        <FiDownload size={16} />
+                      </button>
+                      <button onClick={() => openComments(c)} className="text-gray-500 hover:text-indigo-600 cursor-pointer" title="Comments">
+                        <FiMessageSquare size={16} />
+                      </button>
                       {(user?.role === 'admin' || c.salesman_id === user?.id) && (
-                        <button onClick={() => handleEdit(c)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer"><FiEdit2 size={16} /></button>
+                        <button onClick={() => handleEdit(c)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer" title="Edit">
+                          <FiEdit2 size={16} />
+                        </button>
                       )}
                       {user?.role === 'admin' && (
-                        <button onClick={() => handleDelete(c.id)} className="text-red-500 hover:text-red-700 cursor-pointer"><FiTrash2 size={16} /></button>
+                        <button onClick={() => handleDelete(c.id)} className="text-red-500 hover:text-red-700 cursor-pointer" title="Delete">
+                          <FiTrash2 size={16} />
+                        </button>
                       )}
                     </div>
                   </td>
                 </tr>
               ))}
-              {complaints.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No complaints found</td></tr>}
+              {complaints.length === 0 && <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No complaints found</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
 
+      {/* Add/Edit Complaint Modal */}
       {showModal && (
         <Modal title={editId ? 'Edit Complaint' : 'New Complaint'} onClose={() => setShowModal(false)}>
           <form onSubmit={handleSubmit} className="space-y-3">
@@ -235,6 +304,60 @@ export default function Complaints() {
               {editId ? 'Update Complaint' : 'Submit Complaint'}
             </button>
           </form>
+        </Modal>
+      )}
+
+      {/* Comments Modal */}
+      {commentModal && (
+        <Modal title="Comments" onClose={() => setCommentModal(null)}>
+          <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-medium text-gray-500">{commentModal.created_at?.split('T')[0]}</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[commentModal.status] || ''}`}>{commentModal.status}</span>
+            </div>
+            <p className="text-sm font-medium text-gray-800">{commentModal.customer_company || commentModal.customer_name}</p>
+            <p className="text-xs text-gray-500">{commentModal.subject} &middot; {commentModal.salesman_name}</p>
+          </div>
+
+          {/* Comments list */}
+          <div className="space-y-3 max-h-64 overflow-y-auto mb-4">
+            {loadingComments ? (
+              <p className="text-center text-gray-400 text-sm py-4">Loading comments...</p>
+            ) : comments.length === 0 ? (
+              <p className="text-center text-gray-400 text-sm py-4">No comments yet. Be the first to comment.</p>
+            ) : (
+              comments.map(c => (
+                <div key={c.id} className={`p-3 rounded-lg ${c.user_id === user.id ? 'bg-indigo-50 border border-indigo-100 ml-4' : 'bg-gray-50 border border-gray-100 mr-4'}`}>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-semibold text-gray-700">
+                      {c.user_name}
+                      {c.user_role === 'admin' && (
+                        <span className="ml-1.5 bg-indigo-200 text-indigo-800 text-[10px] px-1.5 py-0.5 rounded">Admin</span>
+                      )}
+                    </span>
+                    <span className="text-[10px] text-gray-400">{c.created_at?.replace('T', ' ').substring(0, 16)}</span>
+                  </div>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{c.comment}</p>
+                </div>
+              ))
+            )}
+          </div>
+
+          {/* Add comment input */}
+          <div className="flex gap-2">
+            <textarea
+              value={newComment}
+              onChange={e => setNewComment(e.target.value)}
+              onKeyDown={handleCommentKey}
+              placeholder="Write a comment... (Enter to send)"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none resize-none"
+              rows={2}
+            />
+            <button onClick={submitComment} disabled={!newComment.trim()}
+              className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer self-end">
+              <FiSend size={16} />
+            </button>
+          </div>
         </Modal>
       )}
     </div>
