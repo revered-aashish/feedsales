@@ -6,7 +6,8 @@ import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX, FiMessageSquare, FiAlertTriangle, FiSend, FiDownload } from 'react-icons/fi';
 
 const today = new Date().toISOString().split('T')[0];
-const emptyForm = { customer_id: '', visit_date: today, purpose: '', location: '', notes: '', status: 'planned', is_issue: false };
+const emptyForm = { customer_id: '', visit_date: today, purpose: '', notes: '', status: 'planned', is_issue: false };
+const emptyEntry = { customer_id: '', purpose: '', notes: '', status: 'planned', is_issue: false };
 
 export default function Movements() {
   const { user } = useAuth();
@@ -14,9 +15,16 @@ export default function Movements() {
   const [customers, setCustomers] = useState([]);
   const [salesmen, setSalesmen] = useState([]);
   const [showModal, setShowModal] = useState(false);
-  const [form, setForm] = useState(emptyForm);
   const [editId, setEditId] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+
+  // Single edit form
+  const [form, setForm] = useState(emptyForm);
+
+  // Multi-entry add form
+  const [addDate, setAddDate] = useState(today);
+  const [entries, setEntries] = useState([{ ...emptyEntry }]);
+  const [submitting, setSubmitting] = useState(false);
 
   // Filters
   const [dateFrom, setDateFrom] = useState('');
@@ -26,7 +34,7 @@ export default function Movements() {
   const [filterIssue, setFilterIssue] = useState('');
 
   // Comments
-  const [commentModal, setCommentModal] = useState(null); // movement object
+  const [commentModal, setCommentModal] = useState(null);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
@@ -54,19 +62,72 @@ export default function Movements() {
 
   const activeFilterCount = [dateFrom, dateTo, filterCustomer, filterSalesman, filterIssue].filter(v => v !== '').length;
 
-  const handleSubmit = async (e) => {
+  // Multi-entry helpers
+  const updateEntry = (index, field, value) => {
+    const updated = [...entries];
+    updated[index] = { ...updated[index], [field]: value };
+    setEntries(updated);
+  };
+
+  const addEntry = () => {
+    setEntries([...entries, { ...emptyEntry }]);
+  };
+
+  const removeEntry = (index) => {
+    if (entries.length <= 1) return;
+    setEntries(entries.filter((_, i) => i !== index));
+  };
+
+  const selectedCustomerIds = entries.map(e => e.customer_id).filter(Boolean);
+
+  const handleMultiSubmit = async (e) => {
+    e.preventDefault();
+    const valid = entries.filter(en => en.customer_id && en.purpose);
+    if (valid.length === 0) return toast.error('Add at least one customer with purpose');
+
+    setSubmitting(true);
+    try {
+      let success = 0;
+      for (const en of valid) {
+        await api.post('/movements', {
+          customer_id: en.customer_id,
+          visit_date: addDate,
+          purpose: en.purpose,
+          notes: en.notes || '',
+          status: en.status,
+          is_issue: en.is_issue,
+        });
+        success++;
+      }
+      toast.success(`${success} movement${success > 1 ? 's' : ''} created`);
+      setShowModal(false);
+      setEntries([{ ...emptyEntry }]);
+      setAddDate(today);
+      load();
+    } catch (err) { toast.error(err.response?.data?.error || 'Error creating movements'); }
+    setSubmitting(false);
+  };
+
+  const handleEditSubmit = async (e) => {
     e.preventDefault();
     try {
-      if (editId) { await api.put(`/movements/${editId}`, form); toast.success('Movement updated'); }
-      else { await api.post('/movements', form); toast.success('Movement created'); }
+      await api.put(`/movements/${editId}`, form);
+      toast.success('Movement updated');
       setShowModal(false); setForm(emptyForm); setEditId(null); load();
     } catch (err) { toast.error(err.response?.data?.error || 'Error'); }
   };
 
   const handleEdit = (m) => {
     setForm({ customer_id: m.customer_id, visit_date: m.visit_date, purpose: m.purpose,
-      location: m.location || '', notes: m.notes || '', status: m.status, is_issue: m.is_issue === 1 });
+      notes: m.notes || '', status: m.status, is_issue: m.is_issue === 1 });
     setEditId(m.id); setShowModal(true);
+  };
+
+  const openAddModal = () => {
+    setEditId(null);
+    setAddDate(today);
+    setEntries([{ ...emptyEntry }]);
+    setShowModal(true);
   };
 
   const handleDelete = async (id) => {
@@ -93,15 +154,12 @@ export default function Movements() {
       setComments([...comments, data]);
       setNewComment('');
       toast.success('Comment added');
-      load(); // refresh comment counts
+      load();
     } catch (err) { toast.error(err.response?.data?.error || 'Failed to add comment'); }
   };
 
   const handleCommentKey = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      submitComment();
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment(); }
   };
 
   const downloadMOM = async (id) => {
@@ -139,7 +197,7 @@ export default function Movements() {
               <span className="bg-indigo-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">{activeFilterCount}</span>
             )}
           </button>
-          <button onClick={() => { setForm(emptyForm); setEditId(null); setShowModal(true); }}
+          <button onClick={openAddModal}
             className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 cursor-pointer">
             <FiPlus size={16} /> Add Movement
           </button>
@@ -232,7 +290,7 @@ export default function Movements() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
-                {['Date', 'Customer', 'Purpose', 'Location', 'Status', 'Salesman', '', 'Actions'].map(h =>
+                {['Date', 'Customer', 'Purpose', 'Status', 'Salesman', '', 'Actions'].map(h =>
                   <th key={h} className="px-4 py-3 text-left font-medium text-gray-600">{h}</th>)}
               </tr>
             </thead>
@@ -242,7 +300,6 @@ export default function Movements() {
                   <td className="px-4 py-3 font-medium text-gray-800">{m.visit_date}</td>
                   <td className="px-4 py-3 text-gray-600">{m.customer_company || m.customer_name}</td>
                   <td className="px-4 py-3 text-gray-600">{m.purpose}</td>
-                  <td className="px-4 py-3 text-gray-600">{m.location}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor[m.status] || ''}`}>{m.status}</span>
                   </td>
@@ -283,16 +340,90 @@ export default function Movements() {
                   </td>
                 </tr>
               ))}
-              {movements.length === 0 && <tr><td colSpan={8} className="px-4 py-8 text-center text-gray-400">No movements found</td></tr>}
+              {movements.length === 0 && <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-400">No movements found</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Add/Edit Movement Modal */}
-      {showModal && (
-        <Modal title={editId ? 'Edit Movement' : 'Add Movement'} onClose={() => setShowModal(false)}>
-          <form onSubmit={handleSubmit} className="space-y-3">
+      {/* Add Movement Modal (Multi-entry) */}
+      {showModal && !editId && (
+        <Modal title="Add Movements" onClose={() => setShowModal(false)}>
+          <form onSubmit={handleMultiSubmit}>
+            <div className="mb-4">
+              <label className="block text-xs text-gray-500 mb-1 font-medium">Visit Date *</label>
+              <input type="date" value={addDate} onChange={e => setAddDate(e.target.value)} className={inp} required />
+            </div>
+
+            <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
+              {entries.map((entry, index) => (
+                <div key={index} className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-semibold text-gray-500">Customer #{index + 1}</span>
+                    {entries.length > 1 && (
+                      <button type="button" onClick={() => removeEntry(index)} className="text-red-400 hover:text-red-600 cursor-pointer">
+                        <FiTrash2 size={14} />
+                      </button>
+                    )}
+                  </div>
+                  <select value={entry.customer_id} onChange={e => updateEntry(index, 'customer_id', e.target.value)}
+                    className={`${inp} mb-2`} required>
+                    <option value="">Select Customer *</option>
+                    {customers.map(c => (
+                      <option key={c.id} value={c.id}
+                        disabled={selectedCustomerIds.includes(String(c.id)) && String(c.id) !== entry.customer_id}>
+                        {c.company || c.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select value={entry.purpose} onChange={e => updateEntry(index, 'purpose', e.target.value)}
+                    className={`${inp} mb-2`} required>
+                    <option value="">Select Purpose *</option>
+                    <option value="Sales Visit">Sales Visit</option>
+                    <option value="Follow-up">Follow-up</option>
+                    <option value="Product Demo">Product Demo</option>
+                    <option value="Complaint Resolution">Complaint Resolution</option>
+                    <option value="Payment Collection">Payment Collection</option>
+                    <option value="New Introduction">New Introduction</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  <select value={entry.status} onChange={e => updateEntry(index, 'status', e.target.value)}
+                    className={`${inp} mb-2`}>
+                    <option value="planned">Planned</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                  <textarea value={entry.notes} onChange={e => updateEntry(index, 'notes', e.target.value)}
+                    placeholder="Notes" className={`${inp} mb-2`} rows={2} />
+                  <label className="flex items-center gap-2 p-2 rounded border border-orange-200 bg-orange-50/50 cursor-pointer select-none">
+                    <input type="checkbox" checked={entry.is_issue}
+                      onChange={e => updateEntry(index, 'is_issue', e.target.checked)}
+                      className="w-3.5 h-3.5 text-orange-600 rounded border-gray-300 focus:ring-orange-500" />
+                    <span className="text-xs font-medium text-orange-800 flex items-center gap-1">
+                      <FiAlertTriangle size={11} /> Maybe an Issue
+                    </span>
+                  </label>
+                </div>
+              ))}
+            </div>
+
+            <button type="button" onClick={addEntry}
+              className="w-full mt-3 py-2 border-2 border-dashed border-indigo-300 text-indigo-600 rounded-lg text-sm font-medium hover:bg-indigo-50 cursor-pointer flex items-center justify-center gap-1.5">
+              <FiPlus size={15} /> Add Another Customer
+            </button>
+
+            <button type="submit" disabled={submitting}
+              className="w-full mt-3 py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 cursor-pointer disabled:opacity-50">
+              {submitting ? 'Saving...' : `Save ${entries.filter(e => e.customer_id && e.purpose).length} Movement${entries.filter(e => e.customer_id && e.purpose).length !== 1 ? 's' : ''}`}
+            </button>
+          </form>
+        </Modal>
+      )}
+
+      {/* Edit Movement Modal (Single) */}
+      {showModal && editId && (
+        <Modal title="Edit Movement" onClose={() => { setShowModal(false); setEditId(null); }}>
+          <form onSubmit={handleEditSubmit} className="space-y-3">
             <select value={form.customer_id} onChange={e => setForm({...form, customer_id: e.target.value})} className={inp} required>
               <option value="">Select Customer *</option>
               {customers.map(c => <option key={c.id} value={c.id}>{c.company || c.name}</option>)}
@@ -311,7 +442,6 @@ export default function Movements() {
               <option value="New Introduction">New Introduction</option>
               <option value="Other">Other</option>
             </select>
-            <input value={form.location} onChange={e => setForm({...form, location: e.target.value})} placeholder="Location" className={inp} />
             <select value={form.status} onChange={e => setForm({...form, status: e.target.value})} className={inp}>
               <option value="planned">Planned</option>
               <option value="completed">Completed</option>
@@ -319,7 +449,6 @@ export default function Movements() {
             </select>
             <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder="Notes" className={inp} rows={3} />
 
-            {/* Maybe an Issue checkbox */}
             <label className="flex items-center gap-2.5 p-3 rounded-lg border border-orange-200 bg-orange-50/50 cursor-pointer select-none">
               <input type="checkbox" checked={form.is_issue}
                 onChange={e => setForm({...form, is_issue: e.target.checked})}
@@ -333,7 +462,7 @@ export default function Movements() {
             </label>
 
             <button type="submit" className="w-full py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 cursor-pointer">
-              {editId ? 'Update Movement' : 'Add Movement'}
+              Update Movement
             </button>
           </form>
         </Modal>
@@ -351,11 +480,10 @@ export default function Movements() {
                 </span>
               )}
             </div>
-            <p className="text-sm font-medium text-gray-800">{commentModal.customer_name}</p>
+            <p className="text-sm font-medium text-gray-800">{commentModal.customer_company || commentModal.customer_name}</p>
             <p className="text-xs text-gray-500">{commentModal.purpose} &middot; {commentModal.salesman_name}</p>
           </div>
 
-          {/* Comments list */}
           <div className="space-y-3 max-h-64 overflow-y-auto mb-4">
             {loadingComments ? (
               <p className="text-center text-gray-400 text-sm py-4">Loading comments...</p>
@@ -379,7 +507,6 @@ export default function Movements() {
             )}
           </div>
 
-          {/* Add comment input */}
           <div className="flex gap-2">
             <textarea
               value={newComment}
