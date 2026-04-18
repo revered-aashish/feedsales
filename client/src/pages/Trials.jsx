@@ -180,7 +180,31 @@ export default function Trials() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* ── Mobile cards ── */}
+      <div className="sm:hidden bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-100">
+        {trials.map(t => (
+          <div key={t.id} className="p-4">
+            <div className="flex items-start justify-between gap-2 mb-1">
+              <p className="font-semibold text-gray-800 text-sm leading-snug">{t.customer_company || t.customer_name}</p>
+              <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[t.status] || ''}`}>{t.status}</span>
+            </div>
+            <p className="text-xs text-gray-600">{t.product}{t.quantity ? ` · ${t.quantity}` : ''}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{[t.start_date, t.salesman_name].filter(Boolean).join(' · ')}</p>
+            <div className="flex justify-end gap-3 mt-2 pt-2 border-t border-gray-100">
+              {(user?.role === 'admin' || t.salesman_id === user?.id) && (
+                <button onClick={() => handleEdit(t)} className="p-1.5 text-indigo-500"><FiEdit2 size={18} /></button>
+              )}
+              {user?.role === 'admin' && (
+                <button onClick={() => handleDelete(t.id)} className="p-1.5 text-red-400"><FiTrash2 size={18} /></button>
+              )}
+            </div>
+          </div>
+        ))}
+        {trials.length === 0 && <p className="px-4 py-10 text-center text-gray-400 text-sm">No trials found</p>}
+      </div>
+
+      {/* ── Desktop table ── */}
+      <div className="hidden sm:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">

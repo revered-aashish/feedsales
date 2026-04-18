@@ -288,7 +288,47 @@ export default function Movements() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* ── Mobile card list ── */}
+      <div className="sm:hidden bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-100">
+        {movements.map(m => (
+          <div key={m.id} className={`p-4 ${m.is_issue ? 'bg-orange-50/30' : ''}`}>
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-medium text-gray-400">{m.visit_date}</span>
+              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[m.status] || ''}`}>{m.status}</span>
+            </div>
+            <p className="font-semibold text-gray-800 text-sm leading-snug">{m.customer_company || m.customer_name}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{m.purpose} &middot; {m.salesman_name}</p>
+            <div className="flex items-center gap-3 mt-3 pt-2.5 border-t border-gray-100">
+              <div className="flex items-center gap-2">
+                {m.is_issue === 1 && (
+                  <span className="flex items-center gap-1 text-orange-600 text-xs font-medium">
+                    <FiAlertTriangle size={11} /> Issue
+                  </span>
+                )}
+                {m.comment_count > 0 && (
+                  <span className="flex items-center gap-1 text-gray-400 text-xs">
+                    <FiMessageSquare size={11} /> {m.comment_count}
+                  </span>
+                )}
+              </div>
+              <div className="ml-auto flex items-center gap-3">
+                <button onClick={() => downloadMOM(m.id)} className="p-1.5 text-gray-400 active:text-green-600" title="Download PDF"><FiDownload size={18} /></button>
+                <button onClick={() => openComments(m)} className="p-1.5 text-gray-400 active:text-indigo-600" title="Comments"><FiMessageSquare size={18} /></button>
+                {(user?.role === 'admin' || m.salesman_id === user?.id) && (
+                  <button onClick={() => handleEdit(m)} className="p-1.5 text-indigo-500 active:text-indigo-800"><FiEdit2 size={18} /></button>
+                )}
+                {user?.role === 'admin' && (
+                  <button onClick={() => handleDelete(m.id)} className="p-1.5 text-red-400 active:text-red-700"><FiTrash2 size={18} /></button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+        {movements.length === 0 && <p className="px-4 py-10 text-center text-gray-400 text-sm">No movements found</p>}
+      </div>
+
+      {/* ── Desktop table ── */}
+      <div className="hidden sm:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
@@ -310,12 +350,12 @@ export default function Movements() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       {m.is_issue === 1 && (
-                        <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs font-medium" title="Maybe an issue">
+                        <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs font-medium">
                           <FiAlertTriangle size={11} /> Issue
                         </span>
                       )}
                       {m.comment_count > 0 && (
-                        <span className="inline-flex items-center gap-1 text-gray-500 text-xs" title={`${m.comment_count} comment(s)`}>
+                        <span className="inline-flex items-center gap-1 text-gray-500 text-xs">
                           <FiMessageSquare size={12} /> {m.comment_count}
                         </span>
                       )}
@@ -323,21 +363,13 @@ export default function Movements() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
-                      <button onClick={() => downloadMOM(m.id)} className="text-gray-500 hover:text-green-600 cursor-pointer" title="Download MOM PDF">
-                        <FiDownload size={16} />
-                      </button>
-                      <button onClick={() => openComments(m)} className="text-gray-500 hover:text-indigo-600 cursor-pointer" title="Comments">
-                        <FiMessageSquare size={16} />
-                      </button>
+                      <button onClick={() => downloadMOM(m.id)} className="text-gray-500 hover:text-green-600 cursor-pointer" title="Download MOM PDF"><FiDownload size={16} /></button>
+                      <button onClick={() => openComments(m)} className="text-gray-500 hover:text-indigo-600 cursor-pointer" title="Comments"><FiMessageSquare size={16} /></button>
                       {(user?.role === 'admin' || m.salesman_id === user?.id) && (
-                        <button onClick={() => handleEdit(m)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer" title="Edit">
-                          <FiEdit2 size={16} />
-                        </button>
+                        <button onClick={() => handleEdit(m)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer"><FiEdit2 size={16} /></button>
                       )}
                       {user?.role === 'admin' && (
-                        <button onClick={() => handleDelete(m.id)} className="text-red-500 hover:text-red-700 cursor-pointer" title="Delete">
-                          <FiTrash2 size={16} />
-                        </button>
+                        <button onClick={() => handleDelete(m.id)} className="text-red-500 hover:text-red-700 cursor-pointer"><FiTrash2 size={16} /></button>
                       )}
                     </div>
                   </td>

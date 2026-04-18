@@ -223,7 +223,37 @@ export default function VisitPlans() {
       )}
 
       {/* Plans List — grouped by date + salesman */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+
+      {/* ── Mobile cards ── */}
+      <div className="sm:hidden bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-100">
+        {groupedList.map((g, idx) => (
+          <div key={idx} className="p-4">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="font-semibold text-gray-800 text-sm">{g.visit_date}</span>
+              <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-medium">
+                {g.items.length} visit{g.items.length > 1 ? 's' : ''}
+              </span>
+            </div>
+            <p className="text-xs text-gray-500 mb-2">{g.salesman_name}</p>
+            <div className="flex flex-wrap gap-1 mb-3">
+              {g.items.slice(0, 4).map((item, i) => (
+                <span key={i} className="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-xs">{item.customer_company || item.customer_name}</span>
+              ))}
+              {g.items.length > 4 && (
+                <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded text-xs">+{g.items.length - 4} more</span>
+              )}
+            </div>
+            <button onClick={() => viewGroupedPlan(g)}
+              className="flex items-center gap-1.5 text-xs text-indigo-600 font-medium py-1">
+              <FiEye size={13} /> View Details
+            </button>
+          </div>
+        ))}
+        {groupedList.length === 0 && <p className="px-4 py-10 text-center text-gray-400 text-sm">No visit plans found</p>}
+      </div>
+
+      {/* ── Desktop table ── */}
+      <div className="hidden sm:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">

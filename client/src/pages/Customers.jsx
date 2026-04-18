@@ -167,7 +167,30 @@ export default function Customers() {
           className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      {/* ── Mobile cards ── */}
+      <div className="sm:hidden bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-100">
+        {customers.map(c => (
+          <div key={c.id} className="p-4 flex items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-gray-800 text-sm truncate">{c.company || c.name}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{[c.city, c.salesman_name].filter(Boolean).join(' · ')}</p>
+            </div>
+            <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${c.is_lost ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+              {c.is_lost ? 'Lost' : 'Active'}
+            </span>
+            <div className="flex gap-2 shrink-0">
+              <button onClick={() => handleEdit(c)} className="p-1.5 text-indigo-500"><FiEdit2 size={18} /></button>
+              {user?.role === 'admin' && (
+                <button onClick={() => handleDelete(c.id)} className="p-1.5 text-red-400"><FiTrash2 size={18} /></button>
+              )}
+            </div>
+          </div>
+        ))}
+        {customers.length === 0 && <p className="px-4 py-10 text-center text-gray-400 text-sm">No customers found</p>}
+      </div>
+
+      {/* ── Desktop table ── */}
+      <div className="hidden sm:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">

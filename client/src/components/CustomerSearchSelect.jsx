@@ -17,7 +17,7 @@ export default function CustomerSearchSelect({
   value,
   onChange,
   disabledIds = [],
-  placeholder = 'Select Customer *',
+  placeholder = 'Tap to search customer…',
   className = '',
 }) {
   const [search, setSearch] = useState('');
