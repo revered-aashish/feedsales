@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import Modal from '../components/Modal';
+import CustomerSearchSelect from '../components/CustomerSearchSelect';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX, FiMessageSquare, FiAlertTriangle, FiSend, FiDownload } from 'react-icons/fi';
 
@@ -226,10 +227,12 @@ export default function Movements() {
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">Customer</label>
-              <select value={filterCustomer} onChange={e => setFilterCustomer(e.target.value)} className={inp}>
-                <option value="">All Customers</option>
-                {customers.map(c => <option key={c.id} value={c.id}>{c.company || c.name}</option>)}
-              </select>
+              <CustomerSearchSelect
+                customers={customers}
+                value={filterCustomer}
+                onChange={setFilterCustomer}
+                placeholder="All Customers"
+              />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">Salesman</label>
@@ -366,16 +369,13 @@ export default function Movements() {
                       </button>
                     )}
                   </div>
-                  <select value={entry.customer_id} onChange={e => updateEntry(index, 'customer_id', e.target.value)}
-                    className={`${inp} mb-2`} required>
-                    <option value="">Select Customer *</option>
-                    {customers.map(c => (
-                      <option key={c.id} value={c.id}
-                        disabled={selectedCustomerIds.includes(String(c.id)) && String(c.id) !== entry.customer_id}>
-                        {c.company || c.name}
-                      </option>
-                    ))}
-                  </select>
+                  <CustomerSearchSelect
+                    customers={customers}
+                    value={entry.customer_id}
+                    onChange={v => updateEntry(index, 'customer_id', v)}
+                    disabledIds={selectedCustomerIds.filter(id => id !== entry.customer_id)}
+                    className="mb-2"
+                  />
                   <select value={entry.purpose} onChange={e => updateEntry(index, 'purpose', e.target.value)}
                     className={`${inp} mb-2`} required>
                     <option value="">Select Purpose *</option>
@@ -424,10 +424,11 @@ export default function Movements() {
       {showModal && editId && (
         <Modal title="Edit Movement" onClose={() => { setShowModal(false); setEditId(null); }}>
           <form onSubmit={handleEditSubmit} className="space-y-3">
-            <select value={form.customer_id} onChange={e => setForm({...form, customer_id: e.target.value})} className={inp} required>
-              <option value="">Select Customer *</option>
-              {customers.map(c => <option key={c.id} value={c.id}>{c.company || c.name}</option>)}
-            </select>
+            <CustomerSearchSelect
+              customers={customers}
+              value={form.customer_id}
+              onChange={v => setForm({...form, customer_id: v})}
+            />
             <div>
               <label className="block text-xs text-gray-500 mb-1">Visit Date *</label>
               <input type="date" value={form.visit_date} onChange={e => setForm({...form, visit_date: e.target.value})} className={inp} required />

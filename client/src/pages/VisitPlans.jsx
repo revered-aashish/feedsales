@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import Modal from '../components/Modal';
+import CustomerSearchSelect from '../components/CustomerSearchSelect';
 import toast from 'react-hot-toast';
 import { FiPlus, FiSave, FiTrash2, FiFilter, FiX, FiCalendar, FiEye } from 'react-icons/fi';
 
@@ -176,10 +177,12 @@ export default function VisitPlans() {
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">Customer</label>
-              <select value={filterCustomer} onChange={e => setFilterCustomer(e.target.value)} className={inp}>
-                <option value="">All Customers</option>
-                {customers.map(c => <option key={c.id} value={c.id}>{c.company || c.name}</option>)}
-              </select>
+              <CustomerSearchSelect
+                customers={customers}
+                value={filterCustomer}
+                onChange={setFilterCustomer}
+                placeholder="All Customers"
+              />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">Salesman</label>
@@ -294,15 +297,13 @@ export default function VisitPlans() {
                         </button>
                       )}
                     </div>
-                    <select value={slot.customer_id} onChange={e => updateSlot(index, 'customer_id', e.target.value)}
-                      className={`${inp} mb-2`} required>
-                      <option value="">Select Customer *</option>
-                      {customers.map(c => (
-                        <option key={c.id} value={c.id} disabled={slots.some((s, i) => i !== index && s.customer_id === String(c.id))}>
-                          {c.company || c.name}
-                        </option>
-                      ))}
-                    </select>
+                    <CustomerSearchSelect
+                      customers={customers}
+                      value={slot.customer_id}
+                      onChange={v => updateSlot(index, 'customer_id', v)}
+                      disabledIds={slots.filter((_, i) => i !== index).map(s => s.customer_id).filter(Boolean)}
+                      className="mb-2"
+                    />
                     <select value={slot.purpose} onChange={e => updateSlot(index, 'purpose', e.target.value)}
                       className={`${inp} mb-2`}>
                       <option value="">Purpose (optional)</option>

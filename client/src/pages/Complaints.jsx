@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import Modal from '../components/Modal';
+import CustomerSearchSelect from '../components/CustomerSearchSelect';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX, FiMessageSquare, FiDownload, FiSend } from 'react-icons/fi';
 
@@ -166,10 +167,12 @@ export default function Complaints() {
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">Customer</label>
-              <select value={filterCustomer} onChange={e => setFilterCustomer(e.target.value)} className={inp}>
-                <option value="">All Customers</option>
-                {customers.map(c => <option key={c.id} value={c.id}>{c.company || c.name}</option>)}
-              </select>
+              <CustomerSearchSelect
+                customers={customers}
+                value={filterCustomer}
+                onChange={setFilterCustomer}
+                placeholder="All Customers"
+              />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">Salesman</label>
@@ -284,10 +287,11 @@ export default function Complaints() {
       {showModal && (
         <Modal title={editId ? 'Edit Complaint' : 'New Complaint'} onClose={() => setShowModal(false)}>
           <form onSubmit={handleSubmit} className="space-y-3">
-            <select value={form.customer_id} onChange={e => setForm({...form, customer_id: e.target.value})} className={inp} required>
-              <option value="">Select Customer *</option>
-              {customers.map(c => <option key={c.id} value={c.id}>{c.company || c.name}</option>)}
-            </select>
+            <CustomerSearchSelect
+              customers={customers}
+              value={form.customer_id}
+              onChange={v => setForm({...form, customer_id: v})}
+            />
             <input value={form.subject} onChange={e => setForm({...form, subject: e.target.value})} placeholder="Subject *" className={inp} required />
             <textarea value={form.description} onChange={e => setForm({...form, description: e.target.value})} placeholder="Description" className={inp} rows={3} />
             {editId && (
