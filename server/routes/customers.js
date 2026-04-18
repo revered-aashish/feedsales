@@ -69,11 +69,15 @@ router.post('/', (req, res) => {
   const { name, company, phone, email, address, city, state, salesman_id } = req.body;
   if (!company) return res.status(400).json({ error: 'Company name is required' });
 
+  // Duplicate company name check (case-insensitive)
+  const duplicate = db.prepare('SELECT id FROM customer WHERE LOWER(TRIM(company)) = LOWER(TRIM(?))').get(company);
+  if (duplicate) return res.status(409).json({ error: `A customer named "${company}" already exists` });
+
   const assignedSalesman = salesman_id || req.user.id;
   const result = db.prepare(
     `INSERT INTO customer (name, company, phone, email, address, city, state, salesman_id)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(name, company || null, phone || null, email || null, address || null, city || null, state || null, assignedSalesman);
+  ).run(name || null, company, phone || null, email || null, address || null, city || null, state || null, assignedSalesman);
 
   const customer = db.prepare('SELECT * FROM customer WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(customer);
@@ -85,6 +89,14 @@ router.put('/:id', (req, res) => {
   if (!existing) return res.status(404).json({ error: 'Customer not found' });
 
   const { name, company, phone, email, address, city, state, salesman_id, is_lost, lost_reason } = req.body;
+
+  // Duplicate company name check (exclude self, case-insensitive)
+  if (company) {
+    const duplicate = db.prepare(
+      'SELECT id FROM customer WHERE LOWER(TRIM(company)) = LOWER(TRIM(?)) AND id != ?'
+    ).get(company, req.params.id);
+    if (duplicate) return res.status(409).json({ error: `A customer named "${company}" already exists` });
+  }
 
   const lostDate = is_lost && !existing.is_lost ? new Date().toISOString().split('T')[0] : existing.lost_date;
 

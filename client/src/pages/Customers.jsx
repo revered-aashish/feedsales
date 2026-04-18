@@ -5,7 +5,7 @@ import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiFilter, FiX } from 'react-icons/fi';
 
-const emptyForm = { name: '', company: '', phone: '', email: '', address: '', city: '', state: '', salesman_id: '', is_lost: 0, lost_reason: '' };
+const emptyForm = { company: '', city: '', salesman_id: '', is_lost: 0, lost_reason: '' };
 
 export default function Customers() {
   const { user } = useAuth();
@@ -63,8 +63,7 @@ export default function Customers() {
   };
 
   const handleEdit = (c) => {
-    setForm({ name: c.name, company: c.company || '', phone: c.phone || '', email: c.email || '',
-      address: c.address || '', city: c.city || '', state: c.state || '',
+    setForm({ company: c.company || '', city: c.city || '',
       salesman_id: c.salesman_id || '', is_lost: c.is_lost || 0, lost_reason: c.lost_reason || '' });
     setEditId(c.id);
     setShowModal(true);
@@ -173,7 +172,7 @@ export default function Customers() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
-                {['Company', 'City', 'Phone', 'Salesman', 'Status', 'Actions'].map(h =>
+                {['Company', 'City', 'Salesman', 'Status', 'Actions'].map(h =>
                   <th key={h} className="px-4 py-3 text-left font-medium text-gray-600">{h}</th>
                 )}
               </tr>
@@ -183,7 +182,6 @@ export default function Customers() {
                 <tr key={c.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-medium text-gray-800">{c.company || c.name}</td>
                   <td className="px-4 py-3 text-gray-600">{c.city}</td>
-                  <td className="px-4 py-3 text-gray-600">{c.phone}</td>
                   <td className="px-4 py-3 text-gray-600">{c.salesman_name}</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${c.is_lost ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
@@ -198,7 +196,7 @@ export default function Customers() {
                   </td>
                 </tr>
               ))}
-              {customers.length === 0 && <tr><td colSpan={6} className="px-4 py-8 text-center text-gray-400">No customers found</td></tr>}
+              {customers.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400">No customers found</td></tr>}
             </tbody>
           </table>
         </div>
@@ -207,16 +205,10 @@ export default function Customers() {
       {showModal && (
         <Modal title={editId ? 'Edit Customer' : 'Add Customer'} onClose={() => setShowModal(false)}>
           <form onSubmit={handleSubmit} className="space-y-3">
-            <input value={form.company} onChange={e => setForm({...form, company: e.target.value})} placeholder="Company Name *" className={inp} required />
-            <div className="grid grid-cols-2 gap-3">
-              <input value={form.phone} onChange={e => setForm({...form, phone: e.target.value})} placeholder="Phone" className={inp} />
-              <input value={form.email} onChange={e => setForm({...form, email: e.target.value})} placeholder="Email" className={inp} />
-            </div>
-            <input value={form.address} onChange={e => setForm({...form, address: e.target.value})} placeholder="Address" className={inp} />
-            <div className="grid grid-cols-2 gap-3">
-              <input value={form.city} onChange={e => setForm({...form, city: e.target.value})} placeholder="City" className={inp} />
-              <input value={form.state} onChange={e => setForm({...form, state: e.target.value})} placeholder="State" className={inp} />
-            </div>
+            <input value={form.company} onChange={e => setForm({...form, company: e.target.value})}
+              placeholder="Company Name *" className={inp} required />
+            <input value={form.city} onChange={e => setForm({...form, city: e.target.value})}
+              placeholder="City" className={inp} />
             <select value={form.salesman_id} onChange={e => setForm({...form, salesman_id: e.target.value})} className={inp}>
               <option value="">Assign Salesman</option>
               {salesmen.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
