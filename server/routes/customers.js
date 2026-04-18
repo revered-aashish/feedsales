@@ -77,7 +77,7 @@ router.post('/', (req, res) => {
   const result = db.prepare(
     `INSERT INTO customer (name, company, phone, email, address, city, state, salesman_id)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(name || null, company, phone || null, email || null, address || null, city || null, state || null, assignedSalesman);
+  ).run(name || company, company, phone || null, email || null, address || null, city || null, state || null, assignedSalesman);
 
   const customer = db.prepare('SELECT * FROM customer WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(customer);
