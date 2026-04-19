@@ -64,7 +64,7 @@ export default function Layout({ children }) {
         <div className="p-5 border-b border-indigo-800 flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold tracking-tight">FeedSales</h1>
-            <p className="text-indigo-300 text-xs mt-0.5">Sales Tracking System</p>
+            <p className="text-indigo-300 text-xs mt-0.5">Feedchem Sales Directory</p>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-indigo-300 hover:text-white cursor-pointer p-1">
             <FiX size={20} />

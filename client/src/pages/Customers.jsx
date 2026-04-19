@@ -5,7 +5,7 @@ import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiFilter, FiX } from 'react-icons/fi';
 
-const emptyForm = { company: '', city: '', salesman_id: '', is_lost: 0, lost_reason: '' };
+const emptyForm = { company: '', city: '', salesman_id: '', is_lost: 0, lost_reason: '', partial_loss_product: '', partial_loss_reason: '' };
 
 export default function Customers() {
   const { user } = useAuth();
@@ -64,7 +64,8 @@ export default function Customers() {
 
   const handleEdit = (c) => {
     setForm({ company: c.company || '', city: c.city || '',
-      salesman_id: c.salesman_id || '', is_lost: c.is_lost || 0, lost_reason: c.lost_reason || '' });
+      salesman_id: c.salesman_id || '', is_lost: c.is_lost || 0, lost_reason: c.lost_reason || '',
+      partial_loss_product: c.partial_loss_product || '', partial_loss_reason: c.partial_loss_reason || '' });
     setEditId(c.id);
     setShowModal(true);
   };
@@ -131,7 +132,8 @@ export default function Customers() {
               <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={inp}>
                 <option value="">All</option>
                 <option value="0">Active</option>
-                <option value="1">Lost</option>
+                <option value="2">Partially Lost</option>
+                <option value="1">Fully Lost</option>
               </select>
             </div>
           </div>
@@ -151,7 +153,7 @@ export default function Customers() {
               )}
               {filterStatus !== '' && (
                 <span className="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs px-2.5 py-1 rounded-full">
-                  Status: {filterStatus === '0' ? 'Active' : 'Lost'}
+                  Status: {filterStatus === '0' ? 'Active' : filterStatus === '2' ? 'Partially Lost' : 'Fully Lost'}
                   <button onClick={() => setFilterStatus('')} className="hover:text-indigo-900 cursor-pointer"><FiX size={12} /></button>
                 </span>
               )}
@@ -175,8 +177,10 @@ export default function Customers() {
               <p className="font-semibold text-gray-800 text-sm truncate">{c.company || c.name}</p>
               <p className="text-xs text-gray-500 mt-0.5">{[c.city, c.salesman_name].filter(Boolean).join(' · ')}</p>
             </div>
-            <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${c.is_lost ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-              {c.is_lost ? 'Lost' : 'Active'}
+            <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${
+              c.is_lost === 2 ? 'bg-orange-100 text-orange-700' : c.is_lost ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+            }`}>
+              {c.is_lost === 2 ? 'Partial' : c.is_lost ? 'Lost' : 'Active'}
             </span>
             <div className="flex gap-2 shrink-0">
               <button onClick={() => handleEdit(c)} className="p-1.5 text-indigo-500"><FiEdit2 size={18} /></button>
@@ -207,8 +211,10 @@ export default function Customers() {
                   <td className="px-4 py-3 text-gray-600">{c.city}</td>
                   <td className="px-4 py-3 text-gray-600">{c.salesman_name}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${c.is_lost ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                      {c.is_lost ? 'Lost' : 'Active'}
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      c.is_lost === 2 ? 'bg-orange-100 text-orange-700' : c.is_lost ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                    }`}>
+                      {c.is_lost === 2 ? 'Partial' : c.is_lost ? 'Lost' : 'Active'}
                     </span>
                   </td>
                   <td className="px-4 py-3 flex gap-2">
@@ -238,12 +244,25 @@ export default function Customers() {
             </select>
             {editId && (
               <>
-                <label className="flex items-center gap-2 text-sm text-gray-700">
-                  <input type="checkbox" checked={form.is_lost === 1} onChange={e => setForm({...form, is_lost: e.target.checked ? 1 : 0})} />
-                  Mark as Lost Customer
-                </label>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1.5 font-medium">Customer Status</label>
+                  <select value={form.is_lost} onChange={e => setForm({...form, is_lost: Number(e.target.value)})} className={inp}>
+                    <option value={0}>Active</option>
+                    <option value={2}>Partially Lost</option>
+                    <option value={1}>Fully Lost</option>
+                  </select>
+                </div>
+                {form.is_lost === 2 && (
+                  <>
+                    <input value={form.partial_loss_product} onChange={e => setForm({...form, partial_loss_product: e.target.value})}
+                      placeholder="Product lost to competitor *" className={inp} required />
+                    <input value={form.partial_loss_reason} onChange={e => setForm({...form, partial_loss_reason: e.target.value})}
+                      placeholder="Reason for partial loss" className={inp} />
+                  </>
+                )}
                 {form.is_lost === 1 && (
-                  <input value={form.lost_reason} onChange={e => setForm({...form, lost_reason: e.target.value})} placeholder="Lost Reason" className={inp} />
+                  <input value={form.lost_reason} onChange={e => setForm({...form, lost_reason: e.target.value})}
+                    placeholder="Reason for losing customer" className={inp} />
                 )}
               </>
             )}

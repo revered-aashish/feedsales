@@ -39,7 +39,7 @@ router.get('/', (req, res) => {
 router.get('/lost', (req, res) => {
   const { salesman_id, city, date_from, date_to, search } = req.query;
   let query = `SELECT c.*, s.name as salesman_name FROM customer c
-    LEFT JOIN salesman s ON c.salesman_id = s.id WHERE c.is_lost = 1`;
+    LEFT JOIN salesman s ON c.salesman_id = s.id WHERE c.is_lost IN (1, 2)`;
   const params = [];
 
   if (salesman_id) { query += ' AND c.salesman_id = ?'; params.push(salesman_id); }
@@ -88,7 +88,8 @@ router.put('/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM customer WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Customer not found' });
 
-  const { name, company, phone, email, address, city, state, salesman_id, is_lost, lost_reason } = req.body;
+  const { name, company, phone, email, address, city, state, salesman_id, is_lost, lost_reason,
+          partial_loss_product, partial_loss_reason } = req.body;
 
   // Duplicate company name check (exclude self, case-insensitive)
   if (company) {
@@ -98,17 +99,21 @@ router.put('/:id', (req, res) => {
     if (duplicate) return res.status(409).json({ error: `A customer named "${company}" already exists` });
   }
 
-  const lostDate = is_lost && !existing.is_lost ? new Date().toISOString().split('T')[0] : existing.lost_date;
+  const newIsLost = is_lost ?? existing.is_lost;
+  const lostDate = (newIsLost && !existing.is_lost) ? new Date().toISOString().split('T')[0] : existing.lost_date;
 
   db.prepare(
     `UPDATE customer SET name=?, company=?, phone=?, email=?, address=?, city=?, state=?,
-     salesman_id=?, is_lost=?, lost_reason=?, lost_date=? WHERE id=?`
+     salesman_id=?, is_lost=?, lost_reason=?, lost_date=?,
+     partial_loss_product=?, partial_loss_reason=? WHERE id=?`
   ).run(
     name || existing.name, company ?? existing.company, phone ?? existing.phone,
     email ?? existing.email, address ?? existing.address, city ?? existing.city,
     state ?? existing.state, salesman_id || existing.salesman_id,
-    is_lost ?? existing.is_lost, lost_reason ?? existing.lost_reason,
-    lostDate, req.params.id
+    newIsLost, lost_reason ?? existing.lost_reason, lostDate,
+    partial_loss_product ?? existing.partial_loss_product,
+    partial_loss_reason ?? existing.partial_loss_reason,
+    req.params.id
   );
 
   const customer = db.prepare('SELECT * FROM customer WHERE id = ?').get(req.params.id);

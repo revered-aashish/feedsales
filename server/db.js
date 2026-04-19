@@ -166,6 +166,17 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_visit_plan_unique ON daily_visit_plan(salesman_id, visit_date, slot_number);
 `);
 
+// Migration: add partial loss columns to customer
+try {
+  db.prepare('SELECT partial_loss_product FROM customer LIMIT 1').get();
+} catch (e) {
+  try {
+    db.exec('ALTER TABLE customer ADD COLUMN partial_loss_product TEXT');
+    db.exec('ALTER TABLE customer ADD COLUMN partial_loss_reason TEXT');
+    console.log('Migrated customer table: added partial_loss_product, partial_loss_reason columns');
+  } catch (e2) { /* columns may already exist */ }
+}
+
 // Migration: add new_customers, issues_faced to self_appraisal
 try {
   db.prepare('SELECT new_customers FROM self_appraisal LIMIT 1').get();
