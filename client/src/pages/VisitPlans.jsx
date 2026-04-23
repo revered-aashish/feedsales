@@ -18,11 +18,13 @@ export default function VisitPlans() {
   const [showViewModal, setShowViewModal] = useState(false);
   const [viewData, setViewData] = useState({ date: '', salesman: '', plans: [] });
 
-  // Filters
+  // Filters — salesmen default to their own data; admin sees all by default
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [filterCustomer, setFilterCustomer] = useState('');
-  const [filterSalesman, setFilterSalesman] = useState('');
+  const [filterSalesman, setFilterSalesman] = useState(() =>
+    user?.role !== 'admin' ? String(user?.id || '') : ''
+  );
 
   // Planning form
   const [planDate, setPlanDate] = useState(today);

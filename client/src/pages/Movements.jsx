@@ -27,11 +27,13 @@ export default function Movements() {
   const [entries, setEntries] = useState([{ ...emptyEntry }]);
   const [submitting, setSubmitting] = useState(false);
 
-  // Filters
+  // Filters — salesmen default to their own data; admin sees all by default
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [filterCustomer, setFilterCustomer] = useState('');
-  const [filterSalesman, setFilterSalesman] = useState('');
+  const [filterSalesman, setFilterSalesman] = useState(() =>
+    user?.role !== 'admin' ? String(user?.id || '') : ''
+  );
   const [filterIssue, setFilterIssue] = useState('');
 
   // Comments
