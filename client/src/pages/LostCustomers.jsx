@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
-import { FiFilter, FiX, FiSearch } from 'react-icons/fi';
+import toast from 'react-hot-toast';
+import { FiFilter, FiX, FiSearch, FiDownload } from 'react-icons/fi';
 import DateInput from '../components/DateInput';
 
 export default function LostCustomers() {
@@ -47,6 +48,30 @@ export default function LostCustomers() {
 
   const activeFilterCount = [dateFrom, dateTo, filterSalesman, filterCity, filterType].filter(Boolean).length;
 
+  const downloadReport = async () => {
+    try {
+      const params = {};
+      if (search) params.search = search;
+      if (filterSalesman) params.salesman_id = filterSalesman;
+      if (filterCity) params.city = filterCity;
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo) params.date_to = dateTo;
+      if (filterType) params.is_lost = filterType;
+      const response = await api.get('/customers/lost/export/pdf', { params, responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      const disposition = response.headers['content-disposition'];
+      const filename = disposition ? disposition.split('filename="')[1]?.replace('"', '') : 'LostCustomers.pdf';
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Report downloaded');
+    } catch { toast.error('Failed to download report'); }
+  };
+
   const inp = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none";
 
   const statusBadge = (c) => (
@@ -70,16 +95,22 @@ export default function LostCustomers() {
           <h1 className="text-2xl font-bold text-gray-800">Lost Customers</h1>
           <p className="text-gray-500 text-sm mt-1">Fully and partially lost customers</p>
         </div>
-        <button onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm border cursor-pointer transition-colors ${
-            activeFilterCount > 0 ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-          }`}>
-          <FiFilter size={16} />
-          Filters
-          {activeFilterCount > 0 && (
-            <span className="bg-indigo-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">{activeFilterCount}</span>
-          )}
-        </button>
+        <div className="flex gap-3">
+          <button onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm border cursor-pointer transition-colors ${
+              activeFilterCount > 0 ? 'bg-indigo-50 border-indigo-300 text-indigo-700' : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+            }`}>
+            <FiFilter size={16} />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="bg-indigo-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">{activeFilterCount}</span>
+            )}
+          </button>
+          <button onClick={downloadReport}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 cursor-pointer">
+            <FiDownload size={16} /> Report PDF
+          </button>
+        </div>
       </div>
 
       {/* Filter Panel */}

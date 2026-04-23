@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiFilter, FiX } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiFilter, FiX, FiDownload } from 'react-icons/fi';
 
 const emptyForm = { company: '', city: '', salesman_id: '', is_lost: 0, lost_reason: '', partial_loss_product: '', partial_loss_reason: '' };
 
@@ -44,6 +44,28 @@ export default function Customers() {
   };
 
   const activeFilterCount = [filterSalesman, filterCity, filterStatus].filter(v => v !== '').length;
+
+  const downloadReport = async () => {
+    try {
+      const params = {};
+      if (search) params.search = search;
+      if (filterSalesman) params.salesman_id = filterSalesman;
+      if (filterCity) params.city = filterCity;
+      if (filterStatus !== '') params.is_lost = filterStatus;
+      const response = await api.get('/customers/export/pdf', { params, responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      const disposition = response.headers['content-disposition'];
+      const filename = disposition ? disposition.split('filename="')[1]?.replace('"', '') : 'Customers.pdf';
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Report downloaded');
+    } catch { toast.error('Failed to download report'); }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -93,6 +115,10 @@ export default function Customers() {
             {activeFilterCount > 0 && (
               <span className="bg-indigo-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">{activeFilterCount}</span>
             )}
+          </button>
+          <button onClick={downloadReport}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 cursor-pointer">
+            <FiDownload size={16} /> Report PDF
           </button>
           <button onClick={() => { setForm(emptyForm); setEditId(null); setShowModal(true); }}
             className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 cursor-pointer">

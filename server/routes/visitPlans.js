@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authenticate } from '../middleware/auth.js';
+import { generateListPDF } from '../utils/pdfReport.js';
 
 const router = Router();
 router.use(authenticate);
@@ -22,6 +23,53 @@ router.get('/', (req, res) => {
 
   query += ' ORDER BY vp.visit_date DESC, vp.salesman_id, vp.slot_number ASC';
   res.json(db.prepare(query).all(...params));
+});
+
+router.get('/export/pdf', (req, res) => {
+  const { salesman_id, customer_id, date_from, date_to } = req.query;
+  let query = `SELECT vp.*, c.name as customer_name, c.company as customer_company,
+    s.name as salesman_name FROM daily_visit_plan vp
+    JOIN customer c ON vp.customer_id = c.id
+    JOIN salesman s ON vp.salesman_id = s.id WHERE 1=1`;
+  const params = [];
+  if (customer_id) { query += ' AND vp.customer_id = ?'; params.push(customer_id); }
+  if (salesman_id) { query += ' AND vp.salesman_id = ?'; params.push(salesman_id); }
+  if (date_from) { query += ' AND vp.visit_date >= ?'; params.push(date_from); }
+  if (date_to) { query += ' AND vp.visit_date <= ?'; params.push(date_to); }
+  query += ' ORDER BY vp.visit_date DESC, vp.salesman_id, vp.slot_number ASC';
+  const rawRows = db.prepare(query).all(...params);
+
+  const filters = [];
+  if (salesman_id) { const s = db.prepare('SELECT name FROM salesman WHERE id=?').get(salesman_id); if (s) filters.push({ label: 'Salesman', value: s.name }); }
+  if (customer_id) { const c = db.prepare('SELECT company, name FROM customer WHERE id=?').get(customer_id); if (c) filters.push({ label: 'Customer', value: c.company || c.name }); }
+  if (date_from) filters.push({ label: 'From', value: date_from });
+  if (date_to) filters.push({ label: 'To', value: date_to });
+
+  // Group by date+salesman for display
+  const grouped = {};
+  rawRows.forEach(r => {
+    const key = `${r.visit_date}__${r.salesman_id}`;
+    if (!grouped[key]) grouped[key] = { visit_date: r.visit_date, salesman_name: r.salesman_name, customers: [] };
+    grouped[key].customers.push(r.customer_company || r.customer_name);
+  });
+  const rows = Object.values(grouped).sort((a, b) => b.visit_date.localeCompare(a.visit_date));
+
+  generateListPDF(res, {
+    title: 'Daily Visit Planning Report',
+    filename: `VisitPlans_${new Date().toISOString().split('T')[0]}.pdf`,
+    filters,
+    columns: [
+      { header: 'Date', key: 'visit_date', flex: 1.2, bold: true },
+      { header: 'Salesman', key: 'salesman_name', flex: 1.5 },
+      { header: 'Visits', key: 'visits', flex: 0.6 },
+      { header: 'Customers Planned', key: 'customers_str', flex: 4 },
+    ],
+    rows: rows.map(r => ({
+      ...r,
+      visits: String(r.customers.length),
+      customers_str: r.customers.join(', '),
+    })),
+  });
 });
 
 // Get a single visit plan

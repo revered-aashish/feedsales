@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import db from '../db.js';
 import { authenticate } from '../middleware/auth.js';
+import { generateListPDF } from '../utils/pdfReport.js';
 
 const router = Router();
 router.use(authenticate);
@@ -54,6 +55,92 @@ router.get('/lost', (req, res) => {
   query += ' ORDER BY c.lost_date DESC';
   const customers = db.prepare(query).all(...params);
   res.json(customers);
+});
+
+// Customers list export — before /:id
+router.get('/export/pdf', (req, res) => {
+  const { salesman_id, search, is_lost, city } = req.query;
+  let query = `SELECT c.*, s.name as salesman_name FROM customer c
+    LEFT JOIN salesman s ON c.salesman_id = s.id WHERE 1=1`;
+  const params = [];
+  if (salesman_id) { query += ' AND c.salesman_id = ?'; params.push(salesman_id); }
+  if (is_lost !== undefined && is_lost !== '') { query += ' AND c.is_lost = ?'; params.push(is_lost); }
+  if (city) { query += ' AND c.city = ?'; params.push(city); }
+  if (search) { query += ' AND (c.name LIKE ? OR c.company LIKE ? OR c.city LIKE ?)'; const s = `%${search}%`; params.push(s, s, s); }
+  query += ' ORDER BY c.created_at DESC';
+  const rows = db.prepare(query).all(...params);
+
+  const filters = [];
+  if (salesman_id) { const s = db.prepare('SELECT name FROM salesman WHERE id=?').get(salesman_id); if (s) filters.push({ label: 'Salesman', value: s.name }); }
+  if (city) filters.push({ label: 'City', value: city });
+  if (is_lost === '0') filters.push({ label: 'Status', value: 'Active' });
+  else if (is_lost === '1') filters.push({ label: 'Status', value: 'Fully Lost' });
+  else if (is_lost === '2') filters.push({ label: 'Status', value: 'Partially Lost' });
+  if (search) filters.push({ label: 'Search', value: search });
+
+  const statusBadge = (v) => ({ 0: { bg: '#dcfce7', fg: '#15803d' }, 1: { bg: '#fee2e2', fg: '#b91c1c' }, 2: { bg: '#ffedd5', fg: '#c2410c' } }[String(v)]);
+
+  generateListPDF(res, {
+    title: 'Customer Report',
+    filename: `Customers_${new Date().toISOString().split('T')[0]}.pdf`,
+    filters,
+    columns: [
+      { header: 'Company', key: 'company', flex: 2.5, bold: true },
+      { header: 'City', key: 'city', flex: 1.2 },
+      { header: 'Salesman', key: 'salesman_name', flex: 1.5 },
+      { header: 'Status', key: 'is_lost', flex: 1, badge: (v) => statusBadge(Number(v)) },
+    ],
+    rows: rows.map(r => ({ ...r, company: r.company || r.name, is_lost: r.is_lost === 2 ? 'Partial' : r.is_lost === 1 ? 'Lost' : 'Active' })),
+  });
+});
+
+// Lost customers export — before /:id
+router.get('/lost/export/pdf', (req, res) => {
+  const { salesman_id, city, date_from, date_to, search, is_lost } = req.query;
+  let query = `SELECT c.*, s.name as salesman_name FROM customer c
+    LEFT JOIN salesman s ON c.salesman_id = s.id WHERE c.is_lost IN (1, 2)`;
+  const params = [];
+  if (salesman_id) { query += ' AND c.salesman_id = ?'; params.push(salesman_id); }
+  if (city) { query += ' AND c.city = ?'; params.push(city); }
+  if (date_from) { query += ' AND c.lost_date >= ?'; params.push(date_from); }
+  if (date_to) { query += ' AND c.lost_date <= ?'; params.push(date_to); }
+  if (is_lost) { query += ' AND c.is_lost = ?'; params.push(is_lost); }
+  if (search) { query += ' AND (c.name LIKE ? OR c.company LIKE ?)'; const s = `%${search}%`; params.push(s, s); }
+  query += ' ORDER BY c.lost_date DESC';
+  const rows = db.prepare(query).all(...params);
+
+  const filters = [];
+  if (salesman_id) { const s = db.prepare('SELECT name FROM salesman WHERE id=?').get(salesman_id); if (s) filters.push({ label: 'Salesman', value: s.name }); }
+  if (city) filters.push({ label: 'City', value: city });
+  if (date_from) filters.push({ label: 'From', value: date_from });
+  if (date_to) filters.push({ label: 'To', value: date_to });
+  if (is_lost === '1') filters.push({ label: 'Type', value: 'Fully Lost' });
+  else if (is_lost === '2') filters.push({ label: 'Type', value: 'Partially Lost' });
+  if (search) filters.push({ label: 'Search', value: search });
+
+  const typeBadge = (v) => v === 'Partial' ? { bg: '#ffedd5', fg: '#c2410c' } : { bg: '#fee2e2', fg: '#b91c1c' };
+
+  generateListPDF(res, {
+    title: 'Lost Customers Report',
+    filename: `LostCustomers_${new Date().toISOString().split('T')[0]}.pdf`,
+    filters,
+    columns: [
+      { header: 'Company', key: 'company', flex: 2, bold: true },
+      { header: 'City', key: 'city', flex: 1 },
+      { header: 'Salesman', key: 'salesman_name', flex: 1.5 },
+      { header: 'Type', key: 'type', flex: 0.8, badge: typeBadge },
+      { header: 'Lost Date', key: 'lost_date', flex: 1 },
+      { header: 'Product / Reason', key: 'details', flex: 2.2 },
+    ],
+    rows: rows.map(r => ({
+      ...r,
+      company: r.company || r.name,
+      type: r.is_lost === 2 ? 'Partial' : 'Lost',
+      details: r.is_lost === 2
+        ? [r.partial_loss_product && `Product: ${r.partial_loss_product}`, r.partial_loss_reason].filter(Boolean).join(' — ')
+        : (r.lost_reason || ''),
+    })),
+  });
 });
 
 // Get single customer

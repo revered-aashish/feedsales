@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import { authenticate } from '../middleware/auth.js';
 import PDFDocument from 'pdfkit';
+import { generateListPDF } from '../utils/pdfReport.js';
 
 const router = Router();
 router.use(authenticate);
@@ -24,6 +25,53 @@ router.get('/', (req, res) => {
 
   query += ' ORDER BY co.created_at DESC';
   res.json(db.prepare(query).all(...params));
+});
+
+router.get('/export/pdf', (req, res) => {
+  const { customer_id, salesman_id, status, date_from, date_to } = req.query;
+  let query = `SELECT co.*, c.name as customer_name, c.company as customer_company,
+    s.name as salesman_name FROM complaint co
+    JOIN customer c ON co.customer_id = c.id
+    JOIN salesman s ON co.salesman_id = s.id WHERE 1=1`;
+  const params = [];
+  if (customer_id) { query += ' AND co.customer_id = ?'; params.push(customer_id); }
+  if (salesman_id) { query += ' AND co.salesman_id = ?'; params.push(salesman_id); }
+  if (status) { query += ' AND co.status = ?'; params.push(status); }
+  if (date_from) { query += ' AND co.created_at >= ?'; params.push(date_from); }
+  if (date_to) { query += ' AND co.created_at <= ?'; params.push(date_to + ' 23:59:59'); }
+  query += ' ORDER BY co.created_at DESC';
+  const rows = db.prepare(query).all(...params);
+
+  const filters = [];
+  if (salesman_id) { const s = db.prepare('SELECT name FROM salesman WHERE id=?').get(salesman_id); if (s) filters.push({ label: 'Salesman', value: s.name }); }
+  if (customer_id) { const c = db.prepare('SELECT company, name FROM customer WHERE id=?').get(customer_id); if (c) filters.push({ label: 'Customer', value: c.company || c.name }); }
+  if (status) filters.push({ label: 'Status', value: status.replace('_', ' ') });
+  if (date_from) filters.push({ label: 'From', value: date_from });
+  if (date_to) filters.push({ label: 'To', value: date_to });
+
+  const statusBadge = (v) => ({
+    open: { bg: '#fee2e2', fg: '#b91c1c' },
+    in_progress: { bg: '#dbeafe', fg: '#1d4ed8' },
+    resolved: { bg: '#dcfce7', fg: '#15803d' },
+  }[v]);
+
+  generateListPDF(res, {
+    title: 'Complaints Report',
+    filename: `Complaints_${new Date().toISOString().split('T')[0]}.pdf`,
+    filters,
+    columns: [
+      { header: 'Customer', key: 'customer', flex: 2, bold: true },
+      { header: 'Subject', key: 'subject', flex: 2.5 },
+      { header: 'Status', key: 'status', flex: 1, badge: statusBadge },
+      { header: 'Date', key: 'date', flex: 1 },
+      { header: 'Salesman', key: 'salesman_name', flex: 1.5 },
+    ],
+    rows: rows.map(r => ({
+      ...r,
+      customer: r.customer_company || r.customer_name,
+      date: r.created_at ? r.created_at.split('T')[0] : '',
+    })),
+  });
 });
 
 router.get('/:id', (req, res) => {

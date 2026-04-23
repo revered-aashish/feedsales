@@ -166,6 +166,29 @@ export default function Movements() {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitComment(); }
   };
 
+  const downloadReport = async () => {
+    try {
+      const params = {};
+      if (dateFrom) params.date_from = dateFrom;
+      if (dateTo) params.date_to = dateTo;
+      if (filterCustomer) params.customer_id = filterCustomer;
+      if (filterSalesman) params.salesman_id = filterSalesman;
+      if (filterIssue !== '') params.is_issue = filterIssue;
+      const response = await api.get('/movements/export/pdf', { params, responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      const disposition = response.headers['content-disposition'];
+      const filename = disposition ? disposition.split('filename="')[1]?.replace('"', '') : 'Movements.pdf';
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('Report downloaded');
+    } catch { toast.error('Failed to download report'); }
+  };
+
   const downloadMOM = async (id) => {
     try {
       const response = await api.get(`/movements/${id}/download/pdf`, { responseType: 'blob' });
@@ -200,6 +223,10 @@ export default function Movements() {
             {activeFilterCount > 0 && (
               <span className="bg-indigo-600 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">{activeFilterCount}</span>
             )}
+          </button>
+          <button onClick={downloadReport}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm border border-gray-300 text-gray-600 hover:bg-gray-50 cursor-pointer">
+            <FiDownload size={16} /> Report PDF
           </button>
           <button onClick={openAddModal}
             className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 cursor-pointer">

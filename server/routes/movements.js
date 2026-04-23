@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import { authenticate } from '../middleware/auth.js';
 import PDFDocument from 'pdfkit';
+import { generateListPDF } from '../utils/pdfReport.js';
 
 const router = Router();
 router.use(authenticate);
@@ -25,6 +26,55 @@ router.get('/', (req, res) => {
 
   query += ' ORDER BY dm.visit_date DESC, dm.created_at DESC';
   res.json(db.prepare(query).all(...params));
+});
+
+router.get('/export/pdf', (req, res) => {
+  const { salesman_id, customer_id, date_from, date_to, is_issue } = req.query;
+  let query = `SELECT dm.*, c.name as customer_name, c.company as customer_company,
+    s.name as salesman_name
+    FROM daily_movement dm
+    JOIN customer c ON dm.customer_id = c.id
+    JOIN salesman s ON dm.salesman_id = s.id WHERE 1=1`;
+  const params = [];
+  if (customer_id) { query += ' AND dm.customer_id = ?'; params.push(customer_id); }
+  if (salesman_id) { query += ' AND dm.salesman_id = ?'; params.push(salesman_id); }
+  if (date_from) { query += ' AND dm.visit_date >= ?'; params.push(date_from); }
+  if (date_to) { query += ' AND dm.visit_date <= ?'; params.push(date_to); }
+  if (is_issue !== undefined && is_issue !== '') { query += ' AND dm.is_issue = ?'; params.push(is_issue); }
+  query += ' ORDER BY dm.visit_date DESC, dm.created_at DESC';
+  const rows = db.prepare(query).all(...params);
+
+  const filters = [];
+  if (salesman_id) { const s = db.prepare('SELECT name FROM salesman WHERE id=?').get(salesman_id); if (s) filters.push({ label: 'Salesman', value: s.name }); }
+  if (customer_id) { const c = db.prepare('SELECT company, name FROM customer WHERE id=?').get(customer_id); if (c) filters.push({ label: 'Customer', value: c.company || c.name }); }
+  if (date_from) filters.push({ label: 'From', value: date_from });
+  if (date_to) filters.push({ label: 'To', value: date_to });
+  if (is_issue === '1') filters.push({ label: 'Issues', value: 'Issues Only' });
+
+  const statusBadge = (v) => ({
+    completed: { bg: '#dcfce7', fg: '#15803d' },
+    planned: { bg: '#dbeafe', fg: '#1d4ed8' },
+    cancelled: { bg: '#f3f4f6', fg: '#6b7280' },
+  }[v]);
+
+  generateListPDF(res, {
+    title: 'Daily Movements Achieved Report',
+    filename: `Movements_${new Date().toISOString().split('T')[0]}.pdf`,
+    filters,
+    columns: [
+      { header: 'Date', key: 'visit_date', flex: 1 },
+      { header: 'Customer', key: 'customer', flex: 2, bold: true },
+      { header: 'Purpose', key: 'purpose', flex: 1.5 },
+      { header: 'Status', key: 'status', flex: 1, badge: statusBadge },
+      { header: 'Salesman', key: 'salesman_name', flex: 1.5 },
+      { header: 'Issue', key: 'issue', flex: 0.7 },
+    ],
+    rows: rows.map(r => ({
+      ...r,
+      customer: r.customer_company || r.customer_name,
+      issue: r.is_issue ? '⚠ Yes' : '',
+    })),
+  });
 });
 
 router.get('/:id', (req, res) => {
