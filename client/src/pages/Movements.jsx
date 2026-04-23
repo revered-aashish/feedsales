@@ -5,6 +5,7 @@ import Modal from '../components/Modal';
 import CustomerSearchSelect from '../components/CustomerSearchSelect';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX, FiMessageSquare, FiAlertTriangle, FiSend, FiDownload } from 'react-icons/fi';
+import DateInput from '../components/DateInput';
 
 const today = new Date().toISOString().split('T')[0];
 const emptyForm = { customer_id: '', visit_date: today, purpose: '', notes: '', status: 'planned', is_issue: false };
@@ -221,11 +222,11 @@ export default function Movements() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">From Date</label>
-              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={inp} />
+              <DateInput value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={inp} />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">To Date</label>
-              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className={inp} />
+              <DateInput value={dateTo} onChange={e => setDateTo(e.target.value)} className={inp} />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">Customer</label>

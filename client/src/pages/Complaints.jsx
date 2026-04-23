@@ -5,6 +5,7 @@ import Modal from '../components/Modal';
 import CustomerSearchSelect from '../components/CustomerSearchSelect';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX, FiMessageSquare, FiDownload, FiSend } from 'react-icons/fi';
+import DateInput from '../components/DateInput';
 
 const emptyForm = { customer_id: '', subject: '', description: '', status: 'open', resolution: '' };
 
@@ -159,11 +160,11 @@ export default function Complaints() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">From Date</label>
-              <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={inp} />
+              <DateInput value={dateFrom} onChange={e => setDateFrom(e.target.value)} className={inp} />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">To Date</label>
-              <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className={inp} />
+              <DateInput value={dateTo} onChange={e => setDateTo(e.target.value)} className={inp} />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1.5 font-medium">Customer</label>
