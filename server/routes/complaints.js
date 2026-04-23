@@ -3,6 +3,31 @@ import db from '../db.js';
 import { authenticate } from '../middleware/auth.js';
 import PDFDocument from 'pdfkit';
 import { generateListPDF } from '../utils/pdfReport.js';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+import dotenv from 'dotenv';
+dotenv.config();
+
+const dbPath = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..', process.env.DB_PATH || './data/feedsales.db');
+const uploadsDir = path.join(path.dirname(dbPath), 'uploads');
+
+const momUpload = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => {
+      if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+      cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+      cb(null, `complaint_${req.params.id}_mom_${Date.now()}.pdf`);
+    },
+  }),
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf') cb(null, true);
+    else cb(new Error('Only PDF files are allowed'), false);
+  },
+  limits: { fileSize: 20 * 1024 * 1024 },
+});
 
 const router = Router();
 router.use(authenticate);
@@ -116,6 +141,11 @@ router.delete('/:id', (req, res) => {
   }
   const existing = db.prepare('SELECT * FROM complaint WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Complaint not found' });
+  // Clean up uploaded MoM file
+  if (existing.mom_path) {
+    const f = path.join(uploadsDir, existing.mom_path);
+    if (fs.existsSync(f)) fs.unlinkSync(f);
+  }
   db.prepare('DELETE FROM complaint_comment WHERE complaint_id = ?').run(req.params.id);
   db.prepare('DELETE FROM complaint WHERE id = ?').run(req.params.id);
   res.json({ message: 'Complaint deleted' });
@@ -269,6 +299,57 @@ router.get('/:id/download/pdf', (req, res) => {
     .text(`Generated on ${new Date().toISOString().split('T')[0]} | Feedchem (India) Limited | Confidential`, 50, footerY + 8, { align: 'center', width: pageWidth });
 
   doc.end();
+});
+
+// Upload MoM PDF for a complaint
+router.post('/:id/upload-mom', (req, res) => {
+  const existing = db.prepare('SELECT * FROM complaint WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Complaint not found' });
+  if (req.user.role !== 'admin' && existing.salesman_id !== req.user.id)
+    return res.status(403).json({ error: 'You can only upload MoM for your own complaints' });
+
+  momUpload.single('mom')(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+    // Delete old MoM file if it exists
+    if (existing.mom_path) {
+      const old = path.join(uploadsDir, existing.mom_path);
+      if (fs.existsSync(old)) fs.unlinkSync(old);
+    }
+
+    db.prepare('UPDATE complaint SET mom_path = ? WHERE id = ?').run(req.file.filename, req.params.id);
+    res.json({ message: 'MoM uploaded', mom_path: req.file.filename });
+  });
+});
+
+// Download the uploaded MoM PDF
+router.get('/:id/mom', (req, res) => {
+  const complaint = db.prepare('SELECT * FROM complaint WHERE id = ?').get(req.params.id);
+  if (!complaint) return res.status(404).json({ error: 'Complaint not found' });
+  if (!complaint.mom_path) return res.status(404).json({ error: 'No MoM uploaded for this complaint' });
+
+  const filePath = path.join(uploadsDir, complaint.mom_path);
+  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found on server' });
+
+  const safeName = (complaint.customer_company || complaint.customer_name || `complaint_${complaint.id}`).replace(/[^a-zA-Z0-9_\- ]/g, '_');
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="MoM_${safeName}.pdf"`);
+  fs.createReadStream(filePath).pipe(res);
+});
+
+// Delete the uploaded MoM PDF
+router.delete('/:id/mom', (req, res) => {
+  const complaint = db.prepare('SELECT * FROM complaint WHERE id = ?').get(req.params.id);
+  if (!complaint) return res.status(404).json({ error: 'Complaint not found' });
+  if (req.user.role !== 'admin' && complaint.salesman_id !== req.user.id)
+    return res.status(403).json({ error: 'You can only delete MoM for your own complaints' });
+  if (!complaint.mom_path) return res.status(404).json({ error: 'No MoM to delete' });
+
+  const filePath = path.join(uploadsDir, complaint.mom_path);
+  if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+  db.prepare('UPDATE complaint SET mom_path = NULL WHERE id = ?').run(req.params.id);
+  res.json({ message: 'MoM deleted' });
 });
 
 export default router;

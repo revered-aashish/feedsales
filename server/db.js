@@ -215,4 +215,24 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+// Migration: add mom_path to complaint
+try {
+  db.prepare('SELECT mom_path FROM complaint LIMIT 1').get();
+} catch (e) {
+  try {
+    db.exec('ALTER TABLE complaint ADD COLUMN mom_path TEXT');
+    console.log('Migrated complaint table: added mom_path column');
+  } catch (e2) { /* already exists */ }
+}
+
+// Migration: add mom_path to trial
+try {
+  db.prepare('SELECT mom_path FROM trial LIMIT 1').get();
+} catch (e) {
+  try {
+    db.exec('ALTER TABLE trial ADD COLUMN mom_path TEXT');
+    console.log('Migrated trial table: added mom_path column');
+  } catch (e2) { /* already exists */ }
+}
+
 export default db;

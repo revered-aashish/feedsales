@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import Modal from '../components/Modal';
 import CustomerSearchSelect from '../components/CustomerSearchSelect';
 import toast from 'react-hot-toast';
-import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX, FiMessageSquare, FiDownload, FiSend } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX, FiMessageSquare, FiDownload, FiSend, FiUpload, FiPaperclip } from 'react-icons/fi';
 import DateInput from '../components/DateInput';
 
 const emptyForm = { customer_id: '', subject: '', description: '', status: 'open', resolution: '' };
@@ -31,6 +31,44 @@ export default function Complaints() {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [loadingComments, setLoadingComments] = useState(false);
+
+  const momInputRef = useRef(null);
+  const [momUploadId, setMomUploadId] = useState(null);
+
+  const triggerMoMUpload = (id) => {
+    setMomUploadId(id);
+    momInputRef.current.value = '';
+    momInputRef.current.click();
+  };
+
+  const handleMoMFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !momUploadId) return;
+    const formData = new FormData();
+    formData.append('mom', file);
+    try {
+      await api.post(`/complaints/${momUploadId}/upload-mom`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success('MoM uploaded');
+      load();
+    } catch (err) { toast.error(err.response?.data?.error || 'Upload failed'); }
+  };
+
+  const downloadUploadedMoM = async (id, customerName) => {
+    try {
+      const response = await api.get(`/complaints/${id}/mom`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `MoM_${customerName || id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('MoM downloaded');
+    } catch { toast.error('Failed to download MoM'); }
+  };
 
   const load = () => {
     const params = {};
@@ -274,6 +312,18 @@ export default function Complaints() {
               )}
               <div className="ml-auto flex items-center gap-3">
                 <button onClick={() => downloadPDF(c.id)} className="p-1.5 text-gray-400"><FiDownload size={18} /></button>
+                {c.mom_path && (
+                  <button onClick={() => downloadUploadedMoM(c.id, c.customer_company || c.customer_name)}
+                    className="p-1.5 text-green-600" title="Download Uploaded MoM">
+                    <FiPaperclip size={18} />
+                  </button>
+                )}
+                {(user?.role === 'admin' || c.salesman_id === user?.id) && (
+                  <button onClick={() => triggerMoMUpload(c.id)}
+                    className="p-1.5 text-indigo-500" title="Upload MoM PDF">
+                    <FiUpload size={18} />
+                  </button>
+                )}
                 <button onClick={() => openComments(c)} className="p-1.5 text-gray-400"><FiMessageSquare size={18} /></button>
                 {(user?.role === 'admin' || c.salesman_id === user?.id) && (
                   <button onClick={() => handleEdit(c)} className="p-1.5 text-indigo-500"><FiEdit2 size={18} /></button>
@@ -317,6 +367,18 @@ export default function Complaints() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
+                      {c.mom_path && (
+                        <button onClick={() => downloadUploadedMoM(c.id, c.customer_company || c.customer_name)}
+                          className="text-green-600 hover:text-green-800 cursor-pointer" title="Download Uploaded MoM">
+                          <FiPaperclip size={16} />
+                        </button>
+                      )}
+                      {(user?.role === 'admin' || c.salesman_id === user?.id) && (
+                        <button onClick={() => triggerMoMUpload(c.id)}
+                          className="text-indigo-500 hover:text-indigo-700 cursor-pointer" title="Upload MoM PDF">
+                          <FiUpload size={16} />
+                        </button>
+                      )}
                       <button onClick={() => downloadPDF(c.id)} className="text-gray-500 hover:text-green-600 cursor-pointer"><FiDownload size={16} /></button>
                       <button onClick={() => openComments(c)} className="text-gray-500 hover:text-indigo-600 cursor-pointer"><FiMessageSquare size={16} /></button>
                       {(user?.role === 'admin' || c.salesman_id === user?.id) && (
@@ -362,6 +424,14 @@ export default function Complaints() {
           </form>
         </Modal>
       )}
+
+      <input
+        ref={momInputRef}
+        type="file"
+        accept=".pdf"
+        className="hidden"
+        onChange={handleMoMFileChange}
+      />
 
       {/* Comments Modal */}
       {commentModal && (

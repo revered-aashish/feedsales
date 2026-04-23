@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import Modal from '../components/Modal';
 import CustomerSearchSelect from '../components/CustomerSearchSelect';
 import toast from 'react-hot-toast';
-import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX, FiDownload, FiUpload, FiPaperclip } from 'react-icons/fi';
 import DateInput from '../components/DateInput';
 
 const emptyForm = { customer_id: '', product: '', quantity: '', status: 'pending', start_date: '', end_date: '', notes: '' };
@@ -25,6 +25,44 @@ export default function Trials() {
   const [filterCustomer, setFilterCustomer] = useState('');
   const [filterSalesman, setFilterSalesman] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
+
+  const momInputRef = useRef(null);
+  const [momUploadId, setMomUploadId] = useState(null);
+
+  const triggerMoMUpload = (id) => {
+    setMomUploadId(id);
+    momInputRef.current.value = '';
+    momInputRef.current.click();
+  };
+
+  const handleMoMFileChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !momUploadId) return;
+    const formData = new FormData();
+    formData.append('mom', file);
+    try {
+      await api.post(`/trials/${momUploadId}/upload-mom`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      toast.success('MoM uploaded');
+      load();
+    } catch (err) { toast.error(err.response?.data?.error || 'Upload failed'); }
+  };
+
+  const downloadUploadedMoM = async (id, label) => {
+    try {
+      const response = await api.get(`/trials/${id}/mom`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `MoM_Trial_${label || id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('MoM downloaded');
+    } catch { toast.error('Failed to download MoM'); }
+  };
 
   const load = () => {
     const params = {};
@@ -219,6 +257,18 @@ export default function Trials() {
             <p className="text-xs text-gray-600">{t.product}{t.quantity ? ` · ${t.quantity}` : ''}</p>
             <p className="text-xs text-gray-400 mt-0.5">{[t.start_date, t.salesman_name].filter(Boolean).join(' · ')}</p>
             <div className="flex justify-end gap-3 mt-2 pt-2 border-t border-gray-100">
+              {t.mom_path && (
+                <button onClick={() => downloadUploadedMoM(t.id, t.customer_company || t.customer_name)}
+                  className="p-1.5 text-green-600" title="Download Uploaded MoM">
+                  <FiPaperclip size={18} />
+                </button>
+              )}
+              {(user?.role === 'admin' || t.salesman_id === user?.id) && (
+                <button onClick={() => triggerMoMUpload(t.id)}
+                  className="p-1.5 text-indigo-500" title="Upload MoM PDF">
+                  <FiUpload size={18} />
+                </button>
+              )}
               {(user?.role === 'admin' || t.salesman_id === user?.id) && (
                 <button onClick={() => handleEdit(t)} className="p-1.5 text-indigo-500"><FiEdit2 size={18} /></button>
               )}
@@ -254,6 +304,18 @@ export default function Trials() {
                   <td className="px-4 py-3 text-gray-600">{t.salesman_name}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
+                      {t.mom_path && (
+                        <button onClick={() => downloadUploadedMoM(t.id, t.customer_company || t.customer_name)}
+                          className="text-green-600 hover:text-green-800 cursor-pointer" title="Download Uploaded MoM">
+                          <FiPaperclip size={16} />
+                        </button>
+                      )}
+                      {(user?.role === 'admin' || t.salesman_id === user?.id) && (
+                        <button onClick={() => triggerMoMUpload(t.id)}
+                          className="text-indigo-500 hover:text-indigo-700 cursor-pointer" title="Upload MoM PDF">
+                          <FiUpload size={16} />
+                        </button>
+                      )}
                       {(user?.role === 'admin' || t.salesman_id === user?.id) && (
                         <button onClick={() => handleEdit(t)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer"><FiEdit2 size={16} /></button>
                       )}
@@ -269,6 +331,14 @@ export default function Trials() {
           </table>
         </div>
       </div>
+
+      <input
+        ref={momInputRef}
+        type="file"
+        accept=".pdf"
+        className="hidden"
+        onChange={handleMoMFileChange}
+      />
 
       {showModal && (
         <Modal title={editId ? 'Edit Trial' : 'Add Trial'} onClose={() => setShowModal(false)}>
