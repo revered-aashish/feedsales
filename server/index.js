@@ -21,6 +21,7 @@ import salesmanRoutes from './routes/salesman.js';
 import visitPlanRoutes from './routes/visitPlans.js';
 import productRoutes from './routes/products.js';
 import appraisalRoutes from './routes/appraisal.js';
+import backupRoutes from './routes/backup.js';
 
 // Auto-seed if database is empty (no admin user exists)
 function autoSeed() {
@@ -72,6 +73,7 @@ app.use('/api/salesman', salesmanRoutes);
 app.use('/api/visit-plans', visitPlanRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/appraisals', appraisalRoutes);
+app.use('/api/backup', backupRoutes);
 
 // Global error handler — catches all unhandled errors and returns JSON
 app.use((err, req, res, next) => {

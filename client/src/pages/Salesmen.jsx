@@ -4,7 +4,7 @@ import { Navigate } from 'react-router-dom';
 import api from '../api';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
-import { FiPlus, FiEdit2, FiTrash2, FiEye, FiEyeOff } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiEye, FiEyeOff, FiDownload } from 'react-icons/fi';
 
 const emptyForm = { name: '', email: '', password: '', phone: '', role: 'salesman' };
 
@@ -77,6 +77,25 @@ export default function Salesmen() {
     } catch (err) { toast.error(err.response?.data?.error || 'Failed to delete'); }
   };
 
+  const downloadBackup = async () => {
+    try {
+      toast.loading('Preparing backup…', { id: 'backup' });
+      const res = await api.get('/backup/db', { responseType: 'blob' });
+      const url = URL.createObjectURL(res.data);
+      const a = document.createElement('a');
+      // Pull filename from Content-Disposition header if available
+      const cd = res.headers['content-disposition'] || '';
+      const match = cd.match(/filename="([^"]+)"/);
+      a.href = url;
+      a.download = match ? match[1] : 'feedsales-backup.db';
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Backup downloaded', { id: 'backup' });
+    } catch (err) {
+      toast.error('Backup failed', { id: 'backup' });
+    }
+  };
+
   const toggleActive = async (s) => {
     const newStatus = s.is_active ? 0 : 1;
     await api.put(`/salesman/${s.id}`, { is_active: newStatus });
@@ -98,10 +117,16 @@ export default function Salesmen() {
             {activeSalesmen.length} active salesmen managing {totalCustomers} customers
           </p>
         </div>
-        <button onClick={() => { setForm(emptyForm); setEditId(null); setShowPassword(false); setShowModal(true); }}
-          className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 cursor-pointer">
-          <FiPlus size={16} /> Add Salesman
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={downloadBackup}
+            className="flex items-center gap-2 bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-50 cursor-pointer">
+            <FiDownload size={16} /> Backup DB
+          </button>
+          <button onClick={() => { setForm(emptyForm); setEditId(null); setShowPassword(false); setShowModal(true); }}
+            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-indigo-700 cursor-pointer">
+            <FiPlus size={16} /> Add Salesman
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
