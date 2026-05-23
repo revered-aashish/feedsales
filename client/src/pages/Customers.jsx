@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
-import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiFilter, FiX, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiFilter, FiX, FiDownload, FiAlertTriangle } from 'react-icons/fi';
 
 const emptyForm = { company: '', city: '', salesman_id: '', is_lost: 0, lost_reason: '', partial_loss_product: '', partial_loss_reason: '' };
 
@@ -100,6 +100,20 @@ export default function Customers() {
   };
 
   const inp = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none";
+
+  // Find similar existing companies while typing in Add mode
+  const getSimilarCustomers = (query) => {
+    if (!query || query.trim().length < 2) return [];
+    const q = query.toLowerCase().trim();
+    // Split into meaningful words (≥2 chars) for word-level matching
+    const words = q.split(/\s+/).filter(w => w.length >= 2);
+    return customers.filter(c => {
+      const name = (c.company || c.name || '').toLowerCase();
+      if (name === q) return false; // exact same entry being edited — skip
+      if (name.includes(q) || q.includes(name)) return true;
+      return words.some(w => name.includes(w));
+    }).slice(0, 5);
+  };
 
   return (
     <div>
@@ -260,8 +274,38 @@ export default function Customers() {
       {showModal && (
         <Modal title={editId ? 'Edit Customer' : 'Add Customer'} onClose={() => setShowModal(false)}>
           <form onSubmit={handleSubmit} className="space-y-3">
-            <input value={form.company} onChange={e => setForm({...form, company: e.target.value})}
-              placeholder="Company Name *" className={inp} required />
+            {/* Company name with live duplicate detection */}
+            <div>
+              <input value={form.company} onChange={e => setForm({...form, company: e.target.value})}
+                placeholder="Company Name *" className={inp} required autoComplete="off" />
+              {!editId && (() => {
+                const similar = getSimilarCustomers(form.company);
+                if (!similar.length) return null;
+                return (
+                  <div className="mt-1.5 rounded-lg border border-amber-300 bg-amber-50 overflow-hidden">
+                    <div className="flex items-center gap-1.5 px-3 py-2 bg-amber-100 border-b border-amber-200">
+                      <FiAlertTriangle size={13} className="text-amber-600 shrink-0" />
+                      <span className="text-xs font-semibold text-amber-800">Similar companies already exist — check before adding</span>
+                    </div>
+                    <ul className="divide-y divide-amber-100">
+                      {similar.map(c => (
+                        <li key={c.id} className="flex items-center justify-between px-3 py-2 gap-2">
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold text-gray-800 truncate">{c.company || c.name}</p>
+                            <p className="text-xs text-gray-500 truncate">{[c.city, c.salesman_name].filter(Boolean).join(' · ')}</p>
+                          </div>
+                          <span className={`shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
+                            c.is_lost === 2 ? 'bg-orange-100 text-orange-700' : c.is_lost ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+                          }`}>
+                            {c.is_lost === 2 ? 'Partial' : c.is_lost ? 'Lost' : 'Active'}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                );
+              })()}
+            </div>
             <input value={form.city} onChange={e => setForm({...form, city: e.target.value})}
               placeholder="City" className={inp} />
             <select value={form.salesman_id} onChange={e => setForm({...form, salesman_id: e.target.value})} className={inp}>
