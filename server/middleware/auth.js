@@ -24,3 +24,10 @@ export function adminOnly(req, res, next) {
   }
   next();
 }
+
+export function dispatchOrAdmin(req, res, next) {
+  if (req.user.role === 'admin' || req.user.is_dispatch_manager) {
+    return next();
+  }
+  return res.status(403).json({ error: 'Dispatch manager or admin access required' });
+}

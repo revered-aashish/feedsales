@@ -13,6 +13,9 @@ import Salesmen from './pages/Salesmen';
 import VisitPlans from './pages/VisitPlans';
 import Products from './pages/Products';
 import SelfAppraisal from './pages/SelfAppraisal';
+import Orders from './pages/Orders';
+import Vehicles from './pages/Vehicles';
+import Dispatches from './pages/Dispatches';
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -38,6 +41,9 @@ function App() {
           <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
           <Route path="/self-appraisal" element={<ProtectedRoute><SelfAppraisal /></ProtectedRoute>} />
           <Route path="/salesmen" element={<ProtectedRoute><Salesmen /></ProtectedRoute>} />
+          <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
+          <Route path="/vehicles" element={<ProtectedRoute><Vehicles /></ProtectedRoute>} />
+          <Route path="/dispatches" element={<ProtectedRoute><Dispatches /></ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

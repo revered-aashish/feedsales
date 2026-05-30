@@ -51,23 +51,17 @@ router.get('/export/pdf', (req, res) => {
   if (date_to) filters.push({ label: 'To', value: date_to });
   if (is_issue === '1') filters.push({ label: 'Issues', value: 'Issues Only' });
 
-  const statusBadge = (v) => ({
-    completed: { bg: '#dcfce7', fg: '#15803d' },
-    planned: { bg: '#dbeafe', fg: '#1d4ed8' },
-    cancelled: { bg: '#f3f4f6', fg: '#6b7280' },
-  }[v]);
-
   generateListPDF(res, {
     title: 'Daily Movements Achieved Report',
     filename: `Movements_${new Date().toISOString().split('T')[0]}.pdf`,
     filters,
     columns: [
-      { header: 'Date', key: 'visit_date', flex: 1 },
-      { header: 'Customer', key: 'customer', flex: 2, bold: true },
-      { header: 'Purpose', key: 'purpose', flex: 1.5 },
-      { header: 'Status', key: 'status', flex: 1, badge: statusBadge },
-      { header: 'Salesman', key: 'salesman_name', flex: 1.5 },
-      { header: 'Issue', key: 'issue', flex: 0.7 },
+      { header: 'Date',     key: 'visit_date',    flex: 1 },
+      { header: 'Customer', key: 'customer',       flex: 2, bold: true },
+      { header: 'Purpose',  key: 'purpose',        flex: 1.5 },
+      { header: 'Notes',    key: 'notes',          flex: 2 },
+      { header: 'Salesman', key: 'salesman_name',  flex: 1.5 },
+      { header: 'Issue',    key: 'issue',          flex: 0.7 },
     ],
     rows: rows.map(r => ({
       ...r,

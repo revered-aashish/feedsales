@@ -4,7 +4,7 @@ import api from '../api';
 import Modal from '../components/Modal';
 import CustomerSearchSelect from '../components/CustomerSearchSelect';
 import toast from 'react-hot-toast';
-import { FiPlus, FiSave, FiTrash2, FiFilter, FiX, FiCalendar, FiEye, FiDownload } from 'react-icons/fi';
+import { FiPlus, FiSave, FiTrash2, FiFilter, FiX, FiCalendar, FiEye, FiDownload, FiEdit2 } from 'react-icons/fi';
 import DateInput from '../components/DateInput';
 
 const today = new Date().toISOString().split('T')[0];
@@ -152,6 +152,17 @@ export default function VisitPlans() {
     setShowViewModal(true);
   };
 
+  // Open Plan My Day modal pre-filled with an existing group's date + slots
+  const openEditModal = (group) => {
+    setPlanDate(group.visit_date);
+    setSlots(group.items.map(p => ({
+      customer_id: String(p.customer_id),
+      purpose: p.purpose || '',
+      remark: p.remark || '',
+    })));
+    setShowPlanModal(true);
+  };
+
   const purposeOptions = ['Sales Visit', 'Follow-up', 'Product Demo', 'Complaint Resolution', 'Payment Collection', 'New Introduction', 'Other'];
   const inp = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none";
 
@@ -272,10 +283,18 @@ export default function VisitPlans() {
                 <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded text-xs">+{g.items.length - 4} more</span>
               )}
             </div>
-            <button onClick={() => viewGroupedPlan(g)}
-              className="flex items-center gap-1.5 text-xs text-indigo-600 font-medium py-1">
-              <FiEye size={13} /> View Details
-            </button>
+            <div className="flex items-center gap-4">
+              <button onClick={() => viewGroupedPlan(g)}
+                className="flex items-center gap-1.5 text-xs text-indigo-600 font-medium py-1">
+                <FiEye size={13} /> View Details
+              </button>
+              {(user?.role === 'admin' || g.salesman_id === user?.id) && (
+                <button onClick={() => openEditModal(g)}
+                  className="flex items-center gap-1.5 text-xs text-gray-500 font-medium py-1">
+                  <FiEdit2 size={13} /> Edit
+                </button>
+              )}
+            </div>
           </div>
         ))}
         {groupedList.length === 0 && <p className="px-4 py-10 text-center text-gray-400 text-sm">No visit plans found</p>}
@@ -312,9 +331,16 @@ export default function VisitPlans() {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <button onClick={() => viewGroupedPlan(g)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer flex items-center gap-1 text-xs">
-                      <FiEye size={14} /> View Details
-                    </button>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => viewGroupedPlan(g)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer flex items-center gap-1 text-xs">
+                        <FiEye size={14} /> View Details
+                      </button>
+                      {(user?.role === 'admin' || g.salesman_id === user?.id) && (
+                        <button onClick={() => openEditModal(g)} className="text-gray-500 hover:text-indigo-700 cursor-pointer flex items-center gap-1 text-xs">
+                          <FiEdit2 size={14} /> Edit
+                        </button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -386,9 +412,21 @@ export default function VisitPlans() {
       {/* View Details Modal */}
       {showViewModal && (
         <Modal title={`Visit Plan — ${viewData.date}`} onClose={() => setShowViewModal(false)}>
-          <div className="mb-3">
-            <span className="text-sm text-gray-500">Salesman: </span>
-            <span className="text-sm font-medium text-gray-800">{viewData.salesman}</span>
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <span className="text-sm text-gray-500">Salesman: </span>
+              <span className="text-sm font-medium text-gray-800">{viewData.salesman}</span>
+            </div>
+            {(user?.role === 'admin' || viewData.plans[0]?.salesman_id === user?.id) && (
+              <button
+                onClick={() => {
+                  setShowViewModal(false);
+                  openEditModal({ visit_date: viewData.date, salesman_name: viewData.salesman, items: viewData.plans });
+                }}
+                className="flex items-center gap-1.5 text-xs bg-indigo-50 text-indigo-700 px-3 py-1.5 rounded-lg hover:bg-indigo-100 cursor-pointer font-medium">
+                <FiEdit2 size={13} /> Edit Plan
+              </button>
+            )}
           </div>
           <div className="space-y-2">
             {viewData.plans.map((p, i) => (

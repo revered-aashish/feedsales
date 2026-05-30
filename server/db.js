@@ -235,4 +235,127 @@ try {
   } catch (e2) { /* already exists */ }
 }
 
+// Migration: add is_dispatch_manager to salesman
+try {
+  db.prepare('SELECT is_dispatch_manager FROM salesman LIMIT 1').get();
+} catch (e) {
+  try {
+    db.exec('ALTER TABLE salesman ADD COLUMN is_dispatch_manager INTEGER DEFAULT 0');
+    console.log('Migrated salesman: added is_dispatch_manager column');
+  } catch (e2) { /* already exists */ }
+}
+
+// ── Ordering & Dispatch tables ────────────────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER NOT NULL,
+    salesman_id INTEGER NOT NULL,
+    delivery_type TEXT NOT NULL DEFAULT 'dispatch',
+    schedule_type TEXT NOT NULL DEFAULT 'asap',
+    scheduled_at TEXT,
+    billing_type TEXT NOT NULL DEFAULT 'bill',
+    order_type TEXT NOT NULL DEFAULT 'new',
+    allow_partial_dispatch INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'pending',
+    hold_remark TEXT,
+    notes TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (customer_id) REFERENCES customer(id),
+    FOREIGN KEY (salesman_id) REFERENCES salesman(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS order_item (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    packing_size TEXT,
+    packing_type TEXT,
+    quantity REAL NOT NULL,
+    unit TEXT DEFAULT 'kg',
+    remaining_quantity REAL NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES product(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS vehicle (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vehicle_number TEXT NOT NULL,
+    driver_name TEXT NOT NULL,
+    is_active INTEGER DEFAULT 1,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS dispatch (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    vehicle_id INTEGER NOT NULL,
+    created_by INTEGER NOT NULL,
+    dispatch_date TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    notes TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (vehicle_id) REFERENCES vehicle(id),
+    FOREIGN KEY (created_by) REFERENCES salesman(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS dispatch_item (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    dispatch_id INTEGER NOT NULL,
+    order_id INTEGER NOT NULL,
+    order_item_id INTEGER NOT NULL,
+    dispatched_quantity REAL NOT NULL,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (dispatch_id) REFERENCES dispatch(id) ON DELETE CASCADE,
+    FOREIGN KEY (order_id) REFERENCES orders(id),
+    FOREIGN KEY (order_item_id) REFERENCES order_item(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_orders_salesman ON orders(salesman_id);
+  CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id);
+  CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+  CREATE INDEX IF NOT EXISTS idx_order_item_order ON order_item(order_id);
+  CREATE INDEX IF NOT EXISTS idx_dispatch_vehicle ON dispatch(vehicle_id);
+  CREATE INDEX IF NOT EXISTS idx_dispatch_date ON dispatch(dispatch_date);
+  CREATE INDEX IF NOT EXISTS idx_dispatch_item_dispatch ON dispatch_item(dispatch_id);
+  CREATE INDEX IF NOT EXISTS idx_dispatch_item_order_item ON dispatch_item(order_item_id);
+`);
+
+// Migration: replace product_id FK on order_item with free-text product_name
+try {
+  db.prepare('SELECT product_name FROM order_item LIMIT 1').get();
+} catch (e) {
+  try {
+    db.pragma('foreign_keys = OFF');
+    db.exec(`
+      CREATE TABLE order_item_v2 (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_id INTEGER NOT NULL,
+        product_name TEXT NOT NULL,
+        packing_size TEXT,
+        packing_type TEXT,
+        quantity REAL NOT NULL,
+        unit TEXT DEFAULT 'kg',
+        remaining_quantity REAL NOT NULL,
+        created_at TEXT DEFAULT (datetime('now')),
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE
+      );
+      INSERT OR IGNORE INTO order_item_v2
+        SELECT oi.id, oi.order_id,
+          COALESCE((SELECT name FROM product WHERE id = oi.product_id), 'Unknown'),
+          oi.packing_size, oi.packing_type, oi.quantity, oi.unit, oi.remaining_quantity, oi.created_at
+        FROM order_item oi;
+      DROP TABLE order_item;
+      ALTER TABLE order_item_v2 RENAME TO order_item;
+      CREATE INDEX IF NOT EXISTS idx_order_item_order ON order_item(order_id);
+    `);
+    db.pragma('foreign_keys = ON');
+    console.log('Migrated order_item: replaced product_id FK with product_name text field');
+  } catch (e2) {
+    db.pragma('foreign_keys = ON');
+    console.error('order_item migration error:', e2.message);
+  }
+}
+
 export default db;

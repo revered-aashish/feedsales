@@ -28,16 +28,13 @@ router.post('/login', (req, res) => {
       return res.status(403).json({ error: 'Account is deactivated' });
     }
 
-    const token = jwt.sign(
-      { id: user.id, name: user.name, email: user.email, role: user.role },
-      SECRET,
-      { expiresIn: '24h' }
-    );
+    const payload = {
+      id: user.id, name: user.name, email: user.email, role: user.role,
+      is_dispatch_manager: user.is_dispatch_manager ? true : false,
+    };
+    const token = jwt.sign(payload, SECRET, { expiresIn: '24h' });
 
-    res.json({
-      token,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role }
-    });
+    res.json({ token, user: payload });
   } catch (err) {
     console.error('Login error:', err.message);
     res.status(500).json({ error: 'Server error during login', details: err.message });

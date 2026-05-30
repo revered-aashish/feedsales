@@ -6,7 +6,7 @@ import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiEyeOff, FiDownload } from 'react-icons/fi';
 
-const emptyForm = { name: '', email: '', password: '', phone: '', role: 'salesman' };
+const emptyForm = { name: '', email: '', password: '', phone: '', role: 'salesman', is_dispatch_manager: false };
 
 export default function Salesmen() {
   const { user } = useAuth();
@@ -61,7 +61,7 @@ export default function Salesmen() {
   };
 
   const handleEdit = (s) => {
-    setForm({ name: s.name, email: s.email, password: '', phone: s.phone || '', role: s.role });
+    setForm({ name: s.name, email: s.email, password: '', phone: s.phone || '', role: s.role, is_dispatch_manager: !!s.is_dispatch_manager });
     setEditId(s.id);
     setShowPassword(false);
     setShowModal(true);
@@ -225,6 +225,12 @@ export default function Salesmen() {
                 <option value="admin">Admin</option>
               </select>
             </div>
+            <label className="flex items-center gap-2.5 cursor-pointer select-none py-1">
+              <input type="checkbox" checked={form.is_dispatch_manager}
+                onChange={e => setForm({ ...form, is_dispatch_manager: e.target.checked })}
+                className="w-4 h-4 accent-indigo-600" />
+              <span className="text-sm text-gray-700">Dispatch Manager privileges</span>
+            </label>
             <button type="submit" className="w-full py-2.5 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 cursor-pointer">
               {editId ? 'Update Salesman' : 'Add Salesman'}
             </button>

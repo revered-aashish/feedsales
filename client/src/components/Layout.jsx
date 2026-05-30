@@ -4,19 +4,25 @@ import { useAuth } from '../context/AuthContext';
 import {
   FiUsers, FiClipboard, FiAlertCircle, FiLogOut, FiHome, FiUserX, FiUserPlus,
   FiCalendar, FiCheckCircle, FiMenu, FiX, FiPackage, FiTarget,
+  FiShoppingCart, FiTruck,
 } from 'react-icons/fi';
 
 const navItems = [
-  { path: '/',               label: 'Dashboard',          icon: FiHome },
-  { path: '/customers',      label: 'Customers',           icon: FiUsers },
-  { path: '/trials',         label: 'Trials',              icon: FiClipboard },
-  { path: '/complaints',     label: 'Complaints',          icon: FiAlertCircle },
+  { path: '/',               label: 'Dashboard',           icon: FiHome },
+  { path: '/customers',      label: 'Customers',            icon: FiUsers },
+  { path: '/trials',         label: 'Trials',               icon: FiClipboard },
+  { path: '/complaints',     label: 'Complaints',           icon: FiAlertCircle },
   { path: '/visit-plans',    label: 'Daily Visit Planning', icon: FiCalendar },
-  { path: '/movements',      label: 'Movements Achieved',  icon: FiCheckCircle },
-  { path: '/products',       label: 'Products',            icon: FiPackage },
-  { path: '/self-appraisal', label: 'Self Appraisal',      icon: FiTarget },
-  { path: '/lost-customers', label: 'Lost Customers',      icon: FiUserX },
-  { path: '/salesmen',       label: 'Manage Salesmen',     icon: FiUserPlus, adminOnly: true },
+  { path: '/movements',      label: 'Movements Achieved',   icon: FiCheckCircle },
+  { path: '/products',       label: 'Products',             icon: FiPackage },
+  { path: '/self-appraisal', label: 'Self Appraisal',       icon: FiTarget },
+  { path: '/lost-customers', label: 'Lost Customers',       icon: FiUserX },
+  // ── Ordering & Dispatch ──
+  { path: '/orders',         label: 'Orders',               icon: FiShoppingCart },
+  { path: '/vehicles',       label: 'Vehicles',             icon: FiTruck, dispatchOnly: true },
+  { path: '/dispatches',     label: 'Dispatch Management',  icon: FiTruck, dispatchOnly: true },
+  // ── Admin ──
+  { path: '/salesmen',       label: 'Manage Salesmen',      icon: FiUserPlus, adminOnly: true },
 ];
 
 // 4 items that get their own tab in the bottom nav
@@ -72,7 +78,11 @@ export default function Layout({ children }) {
         </div>
 
         <nav className="flex-1 py-3 overflow-y-auto">
-          {navItems.filter(item => !item.adminOnly || user?.role === 'admin').map(({ path, label, icon: Icon }) => {
+          {navItems.filter(item => {
+            if (item.adminOnly) return user?.role === 'admin';
+            if (item.dispatchOnly) return user?.role === 'admin' || user?.is_dispatch_manager;
+            return true;
+          }).map(({ path, label, icon: Icon }) => {
             const active = isActive(path);
             return (
               <Link key={path} to={path}

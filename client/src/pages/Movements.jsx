@@ -206,7 +206,6 @@ export default function Movements() {
     } catch { toast.error('Failed to download PDF'); }
   };
 
-  const statusColor = { planned: 'bg-blue-100 text-blue-700', completed: 'bg-green-100 text-green-700', cancelled: 'bg-gray-100 text-gray-700' };
   const inp = "w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none";
 
   return (
@@ -324,10 +323,10 @@ export default function Movements() {
           <div key={m.id} className={`p-4 ${m.is_issue ? 'bg-orange-50/30' : ''}`}>
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-medium text-gray-400">{m.visit_date}</span>
-              <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[m.status] || ''}`}>{m.status}</span>
             </div>
             <p className="font-semibold text-gray-800 text-sm leading-snug">{m.customer_company || m.customer_name}</p>
             <p className="text-xs text-gray-500 mt-0.5">{m.purpose} &middot; {m.salesman_name}</p>
+            {m.notes && <p className="text-xs text-gray-400 mt-1 line-clamp-2">{m.notes}</p>}
             <div className="flex items-center gap-3 mt-3 pt-2.5 border-t border-gray-100">
               <div className="flex items-center gap-2">
                 {m.is_issue === 1 && (
@@ -363,7 +362,7 @@ export default function Movements() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b">
               <tr>
-                {['Date', 'Customer', 'Purpose', 'Status', 'Salesman', '', 'Actions'].map(h =>
+                {['Date', 'Customer', 'Purpose', 'Notes', 'Salesman', '', 'Actions'].map(h =>
                   <th key={h} className="px-4 py-3 text-left font-medium text-gray-600">{h}</th>)}
               </tr>
             </thead>
@@ -373,8 +372,8 @@ export default function Movements() {
                   <td className="px-4 py-3 font-medium text-gray-800">{m.visit_date}</td>
                   <td className="px-4 py-3 text-gray-600">{m.customer_company || m.customer_name}</td>
                   <td className="px-4 py-3 text-gray-600">{m.purpose}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor[m.status] || ''}`}>{m.status}</span>
+                  <td className="px-4 py-3 text-gray-500 text-xs max-w-xs">
+                    <span className="line-clamp-2">{m.notes || '—'}</span>
                   </td>
                   <td className="px-4 py-3 text-gray-600">{m.salesman_name}</td>
                   <td className="px-4 py-3">
@@ -449,12 +448,6 @@ export default function Movements() {
                     <option value="New Introduction">New Introduction</option>
                     <option value="Other">Other</option>
                   </select>
-                  <select value={entry.status} onChange={e => updateEntry(index, 'status', e.target.value)}
-                    className={`${inp} mb-2`}>
-                    <option value="planned">Planned</option>
-                    <option value="completed">Completed</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
                   <textarea value={entry.notes} onChange={e => updateEntry(index, 'notes', e.target.value)}
                     placeholder="Notes" className={`${inp} mb-2`} rows={2} />
                   <label className="flex items-center gap-2 p-2 rounded border border-orange-200 bg-orange-50/50 cursor-pointer select-none">
@@ -504,11 +497,6 @@ export default function Movements() {
               <option value="Payment Collection">Payment Collection</option>
               <option value="New Introduction">New Introduction</option>
               <option value="Other">Other</option>
-            </select>
-            <select value={form.status} onChange={e => setForm({...form, status: e.target.value})} className={inp}>
-              <option value="planned">Planned</option>
-              <option value="completed">Completed</option>
-              <option value="cancelled">Cancelled</option>
             </select>
             <textarea value={form.notes} onChange={e => setForm({...form, notes: e.target.value})} placeholder="Notes" className={inp} rows={3} />
 

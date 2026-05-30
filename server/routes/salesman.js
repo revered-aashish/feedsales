@@ -7,7 +7,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', (req, res) => {
-  const salesmen = db.prepare('SELECT id, name, email, phone, role, is_active, created_at FROM salesman ORDER BY name').all();
+  const salesmen = db.prepare('SELECT id, name, email, phone, role, is_active, is_dispatch_manager, created_at FROM salesman ORDER BY name').all();
   res.json(salesmen);
 });
 
@@ -37,15 +37,17 @@ router.put('/:id', adminOnly, (req, res) => {
   const existing = db.prepare('SELECT * FROM salesman WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Salesman not found' });
 
-  const { name, email, password, phone, role, is_active } = req.body;
+  const { name, email, password, phone, role, is_active, is_dispatch_manager } = req.body;
   const hash = password ? bcrypt.hashSync(password, 10) : existing.password;
 
   db.prepare(
-    'UPDATE salesman SET name=?, email=?, password=?, phone=?, role=?, is_active=? WHERE id=?'
+    'UPDATE salesman SET name=?, email=?, password=?, phone=?, role=?, is_active=?, is_dispatch_manager=? WHERE id=?'
   ).run(name || existing.name, email || existing.email, hash, phone ?? existing.phone,
-    role || existing.role, is_active ?? existing.is_active, req.params.id);
+    role || existing.role, is_active ?? existing.is_active,
+    is_dispatch_manager != null ? (is_dispatch_manager ? 1 : 0) : (existing.is_dispatch_manager ?? 0),
+    req.params.id);
 
-  const salesman = db.prepare('SELECT id, name, email, phone, role, is_active, created_at FROM salesman WHERE id = ?').get(req.params.id);
+  const salesman = db.prepare('SELECT id, name, email, phone, role, is_active, is_dispatch_manager, created_at FROM salesman WHERE id = ?').get(req.params.id);
   res.json(salesman);
 });
 
