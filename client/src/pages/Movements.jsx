@@ -372,8 +372,8 @@ export default function Movements() {
                   <td className="px-4 py-3 font-medium text-gray-800">{m.visit_date}</td>
                   <td className="px-4 py-3 text-gray-600">{m.customer_company || m.customer_name}</td>
                   <td className="px-4 py-3 text-gray-600">{m.purpose}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs max-w-xs">
-                    <span className="line-clamp-2">{m.notes || '—'}</span>
+                  <td className="px-4 py-3 text-gray-500 text-xs" style={{maxWidth:'160px'}}>
+                    <span className="block truncate" title={m.notes || ''}>{m.notes || '—'}</span>
                   </td>
                   <td className="px-4 py-3 text-gray-600">{m.salesman_name}</td>
                   <td className="px-4 py-3">
