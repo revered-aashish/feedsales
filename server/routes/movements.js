@@ -59,7 +59,7 @@ router.get('/export/pdf', (req, res) => {
       { header: 'Date',     key: 'visit_date',    flex: 1 },
       { header: 'Customer', key: 'customer',       flex: 2, bold: true },
       { header: 'Purpose',  key: 'purpose',        flex: 1.5 },
-      { header: 'Notes',    key: 'notes',          flex: 2 },
+      { header: 'Notes',    key: 'notes',          flex: 2,   wrap: true },
       { header: 'Salesman', key: 'salesman_name',  flex: 1.5 },
       { header: 'Issue',    key: 'issue',          flex: 0.7 },
     ],
