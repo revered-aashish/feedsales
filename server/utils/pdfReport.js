@@ -35,8 +35,11 @@ export function generateListPDF(res, { title, filename, filters = [], columns, r
   const range = doc.bufferedPageRange();
   for (let i = 0; i < range.count; i++) {
     doc.switchToPage(i);
-    // fy must be within the printable area (below page.height - MARGIN_BOTTOM triggers auto-pagination)
-    const fy = doc.page.height - MARGIN_BOTTOM - 2;
+    // Zero the bottom margin so doc.text() in the footer zone doesn't trigger PDFKit's
+    // auto-pagination (maxY = page.height - margins.bottom; text at page.height-26 is
+    // inside the 40px margin and would otherwise cause addPage() to fire).
+    doc.page.margins.bottom = 0;
+    const fy = doc.page.height - 26;
     doc.rect(40, fy - 8, pageW, 0.5).fillColor(GRAY_200).fill();
     doc.fontSize(7).fillColor(GRAY_400).font('Helvetica')
       .text('Feedchem (India) Limited  ·  Confidential', 40, fy, { lineBreak: false });
