@@ -7,7 +7,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', (req, res) => {
-  const salesmen = db.prepare('SELECT id, name, email, phone, role, is_active, is_dispatch_manager, created_at FROM salesman ORDER BY name').all();
+  const salesmen = db.prepare('SELECT id, name, email, phone, role, is_active, is_dispatch_manager, region, created_at FROM salesman ORDER BY name').all();
   res.json(salesmen);
 });
 
@@ -18,18 +18,21 @@ router.get('/:id', (req, res) => {
 });
 
 router.post('/', adminOnly, (req, res) => {
-  const { name, email, password, phone, role } = req.body;
+  const { name, email, password, phone, role, region } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: 'name, email, and password are required' });
+  if ((role || 'salesman') === 'salesman' && !region) {
+    return res.status(400).json({ error: 'A region must be assigned to the salesman' });
+  }
 
   const exists = db.prepare('SELECT id FROM salesman WHERE email = ?').get(email);
   if (exists) return res.status(409).json({ error: 'Email already exists' });
 
   const hash = bcrypt.hashSync(password, 10);
   const result = db.prepare(
-    'INSERT INTO salesman (name, email, password, phone, role) VALUES (?, ?, ?, ?, ?)'
-  ).run(name, email, hash, phone || null, role || 'salesman');
+    'INSERT INTO salesman (name, email, password, phone, role, region) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(name, email, hash, phone || null, role || 'salesman', region || null);
 
-  const salesman = db.prepare('SELECT id, name, email, phone, role, created_at FROM salesman WHERE id = ?').get(result.lastInsertRowid);
+  const salesman = db.prepare('SELECT id, name, email, phone, role, region, created_at FROM salesman WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(salesman);
 });
 
@@ -37,17 +40,23 @@ router.put('/:id', adminOnly, (req, res) => {
   const existing = db.prepare('SELECT * FROM salesman WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Salesman not found' });
 
-  const { name, email, password, phone, role, is_active, is_dispatch_manager } = req.body;
+  const { name, email, password, phone, role, is_active, is_dispatch_manager, region } = req.body;
+  const finalRole = role || existing.role;
+  const finalRegion = region !== undefined ? (region || null) : existing.region;
+  if (finalRole === 'salesman' && !finalRegion) {
+    return res.status(400).json({ error: 'A region must be assigned to the salesman' });
+  }
   const hash = password ? bcrypt.hashSync(password, 10) : existing.password;
 
   db.prepare(
-    'UPDATE salesman SET name=?, email=?, password=?, phone=?, role=?, is_active=?, is_dispatch_manager=? WHERE id=?'
+    'UPDATE salesman SET name=?, email=?, password=?, phone=?, role=?, is_active=?, is_dispatch_manager=?, region=? WHERE id=?'
   ).run(name || existing.name, email || existing.email, hash, phone ?? existing.phone,
-    role || existing.role, is_active ?? existing.is_active,
+    finalRole, is_active ?? existing.is_active,
     is_dispatch_manager != null ? (is_dispatch_manager ? 1 : 0) : (existing.is_dispatch_manager ?? 0),
+    finalRegion,
     req.params.id);
 
-  const salesman = db.prepare('SELECT id, name, email, phone, role, is_active, is_dispatch_manager, created_at FROM salesman WHERE id = ?').get(req.params.id);
+  const salesman = db.prepare('SELECT id, name, email, phone, role, is_active, is_dispatch_manager, region, created_at FROM salesman WHERE id = ?').get(req.params.id);
   res.json(salesman);
 });
 

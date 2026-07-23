@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, regionClause } from '../middleware/auth.js';
 import { generateListPDF } from '../utils/pdfReport.js';
 
 const router = Router();
@@ -8,12 +8,15 @@ router.use(authenticate);
 
 // Get visit plans (grouped by date & salesman)
 router.get('/', (req, res) => {
-  const { salesman_id, visit_date, customer_id, date_from, date_to } = req.query;
+  const { salesman_id, visit_date, customer_id, date_from, date_to, region } = req.query;
   let query = `SELECT vp.*, c.name as customer_name, c.company as customer_company,
     s.name as salesman_name FROM daily_visit_plan vp
     JOIN customer c ON vp.customer_id = c.id
     JOIN salesman s ON vp.salesman_id = s.id WHERE 1=1`;
   const params = [];
+
+  const rc = regionClause(req.user, region);
+  query += rc.sql; params.push(...rc.params);
 
   if (customer_id) { query += ' AND vp.customer_id = ?'; params.push(customer_id); }
   if (salesman_id) { query += ' AND vp.salesman_id = ?'; params.push(salesman_id); }

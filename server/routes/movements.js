@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, regionClause } from '../middleware/auth.js';
 import PDFDocument from 'pdfkit';
 import { generateListPDF } from '../utils/pdfReport.js';
 
@@ -8,7 +8,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', (req, res) => {
-  const { salesman_id, visit_date, customer_id, date_from, date_to, is_issue } = req.query;
+  const { salesman_id, visit_date, customer_id, date_from, date_to, is_issue, region } = req.query;
   let query = `SELECT dm.*, c.name as customer_name, c.company as customer_company,
     s.name as salesman_name,
     (SELECT COUNT(*) FROM movement_comment mc WHERE mc.movement_id = dm.id) as comment_count
@@ -16,6 +16,9 @@ router.get('/', (req, res) => {
     JOIN customer c ON dm.customer_id = c.id
     JOIN salesman s ON dm.salesman_id = s.id WHERE 1=1`;
   const params = [];
+
+  const rc = regionClause(req.user, region);
+  query += rc.sql; params.push(...rc.params);
 
   if (customer_id) { query += ' AND dm.customer_id = ?'; params.push(customer_id); }
   if (salesman_id) { query += ' AND dm.salesman_id = ?'; params.push(salesman_id); }
@@ -29,13 +32,15 @@ router.get('/', (req, res) => {
 });
 
 router.get('/export/pdf', (req, res) => {
-  const { salesman_id, customer_id, date_from, date_to, is_issue } = req.query;
+  const { salesman_id, customer_id, date_from, date_to, is_issue, region } = req.query;
   let query = `SELECT dm.*, c.name as customer_name, c.company as customer_company,
     s.name as salesman_name
     FROM daily_movement dm
     JOIN customer c ON dm.customer_id = c.id
     JOIN salesman s ON dm.salesman_id = s.id WHERE 1=1`;
   const params = [];
+  const rc = regionClause(req.user, region);
+  query += rc.sql; params.push(...rc.params);
   if (customer_id) { query += ' AND dm.customer_id = ?'; params.push(customer_id); }
   if (salesman_id) { query += ' AND dm.salesman_id = ?'; params.push(salesman_id); }
   if (date_from) { query += ' AND dm.visit_date >= ?'; params.push(date_from); }

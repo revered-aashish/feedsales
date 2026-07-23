@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, regionClause } from '../middleware/auth.js';
 import { generateListPDF } from '../utils/pdfReport.js';
 
 const router = Router();
@@ -8,23 +8,17 @@ router.use(authenticate);
 
 // List all customers (with optional filters)
 router.get('/', (req, res) => {
-  const { salesman_id, search, is_lost, city } = req.query;
-  let query = `SELECT c.*, s.name as salesman_name FROM customer c
+  const { salesman_id, search, is_lost, city, region } = req.query;
+  let query = `SELECT c.*, s.name as salesman_name, s.region as salesman_region FROM customer c
     LEFT JOIN salesman s ON c.salesman_id = s.id WHERE 1=1`;
   const params = [];
 
-  if (salesman_id) {
-    query += ' AND c.salesman_id = ?';
-    params.push(salesman_id);
-  }
-  if (is_lost !== undefined) {
-    query += ' AND c.is_lost = ?';
-    params.push(is_lost);
-  }
-  if (city) {
-    query += ' AND c.city = ?';
-    params.push(city);
-  }
+  const rc = regionClause(req.user, region);
+  query += rc.sql; params.push(...rc.params);
+
+  if (salesman_id) { query += ' AND c.salesman_id = ?'; params.push(salesman_id); }
+  if (is_lost !== undefined) { query += ' AND c.is_lost = ?'; params.push(is_lost); }
+  if (city) { query += ' AND c.city = ?'; params.push(city); }
   if (search) {
     query += ' AND (c.name LIKE ? OR c.company LIKE ? OR c.city LIKE ?)';
     const s = `%${search}%`;
@@ -32,29 +26,26 @@ router.get('/', (req, res) => {
   }
 
   query += ' ORDER BY c.created_at DESC';
-  const customers = db.prepare(query).all(...params);
-  res.json(customers);
+  res.json(db.prepare(query).all(...params));
 });
 
 // Lost customers
 router.get('/lost', (req, res) => {
-  const { salesman_id, city, date_from, date_to, search } = req.query;
+  const { salesman_id, city, date_from, date_to, search, region } = req.query;
   let query = `SELECT c.*, s.name as salesman_name FROM customer c
     LEFT JOIN salesman s ON c.salesman_id = s.id WHERE c.is_lost IN (1, 2)`;
   const params = [];
+
+  const rc = regionClause(req.user, region);
+  query += rc.sql; params.push(...rc.params);
 
   if (salesman_id) { query += ' AND c.salesman_id = ?'; params.push(salesman_id); }
   if (city) { query += ' AND c.city = ?'; params.push(city); }
   if (date_from) { query += ' AND c.lost_date >= ?'; params.push(date_from); }
   if (date_to) { query += ' AND c.lost_date <= ?'; params.push(date_to); }
-  if (search) {
-    query += ' AND (c.name LIKE ? OR c.company LIKE ?)';
-    const s = `%${search}%`;
-    params.push(s, s);
-  }
+  if (search) { query += ' AND (c.name LIKE ? OR c.company LIKE ?)'; const s = `%${search}%`; params.push(s, s); }
   query += ' ORDER BY c.lost_date DESC';
-  const customers = db.prepare(query).all(...params);
-  res.json(customers);
+  res.json(db.prepare(query).all(...params));
 });
 
 // Customers list export — before /:id

@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, regionClause } from '../middleware/auth.js';
 import PDFDocument from 'pdfkit';
 import { generateListPDF } from '../utils/pdfReport.js';
 import multer from 'multer';
@@ -33,7 +33,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', (req, res) => {
-  const { customer_id, salesman_id, status, date_from, date_to } = req.query;
+  const { customer_id, salesman_id, status, date_from, date_to, region } = req.query;
   let query = `SELECT co.*, c.name as customer_name, c.company as customer_company,
     s.name as salesman_name,
     (SELECT COUNT(*) FROM complaint_comment cc WHERE cc.complaint_id = co.id) as comment_count
@@ -41,6 +41,9 @@ router.get('/', (req, res) => {
     JOIN customer c ON co.customer_id = c.id
     JOIN salesman s ON co.salesman_id = s.id WHERE 1=1`;
   const params = [];
+
+  const rc = regionClause(req.user, region);
+  query += rc.sql; params.push(...rc.params);
 
   if (customer_id) { query += ' AND co.customer_id = ?'; params.push(customer_id); }
   if (salesman_id) { query += ' AND co.salesman_id = ?'; params.push(salesman_id); }

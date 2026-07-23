@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useRegion } from '../context/RegionContext';
 import {
   FiUsers, FiClipboard, FiAlertCircle, FiLogOut, FiHome, FiUserX, FiUserPlus,
   FiCalendar, FiCheckCircle, FiMenu, FiX, FiPackage, FiTarget,
-  FiShoppingCart, FiTruck,
+  FiShoppingCart, FiTruck, FiGlobe,
 } from 'react-icons/fi';
 
 const navItems = [
@@ -17,10 +18,10 @@ const navItems = [
   { path: '/products',       label: 'Products',             icon: FiPackage },
   { path: '/self-appraisal', label: 'Self Appraisal',       icon: FiTarget },
   { path: '/lost-customers', label: 'Lost Customers',       icon: FiUserX },
-  // ── Ordering & Dispatch ──
-  { path: '/orders',         label: 'Orders',               icon: FiShoppingCart },
-  { path: '/vehicles',       label: 'Vehicles',             icon: FiTruck, dispatchOnly: true },
-  { path: '/dispatches',     label: 'Dispatch Management',  icon: FiTruck, dispatchOnly: true },
+  // ── Ordering & Dispatch (temporarily hidden) ──
+  // { path: '/orders',         label: 'Orders',               icon: FiShoppingCart },
+  // { path: '/vehicles',       label: 'Vehicles',             icon: FiTruck, dispatchOnly: true },
+  // { path: '/dispatches',     label: 'Dispatch Management',  icon: FiTruck, dispatchOnly: true },
   // ── Admin ──
   { path: '/salesmen',       label: 'Manage Salesmen',      icon: FiUserPlus, adminOnly: true },
 ];
@@ -35,7 +36,9 @@ const bottomNavItems = [
 
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
+  const { activeRegion, setActiveRegion, regions } = useRegion();
   const location = useLocation();
+  const isAdmin = user?.role === 'admin';
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -53,8 +56,35 @@ export default function Layout({ children }) {
           <FiMenu size={22} />
         </button>
         <h1 className="text-base font-bold tracking-tight">FeedSales</h1>
-        <div className="w-8" />
+        {isAdmin ? (
+          <select
+            value={activeRegion ?? ''}
+            onChange={e => setActiveRegion(e.target.value || null)}
+            className="text-xs bg-indigo-800 border border-indigo-600 text-white rounded px-2 py-1 cursor-pointer outline-none max-w-[8rem]">
+            <option value="">All Regions</option>
+            {regions.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+          </select>
+        ) : (
+          <div className="w-8" />
+        )}
       </div>
+
+      {/* ── Desktop top bar — region selector in the top-right corner (admin only) ── */}
+      {isAdmin && (
+        <div className="hidden lg:flex fixed top-0 left-64 right-0 h-14 bg-white border-b border-gray-200 items-center justify-end px-8 z-30">
+          <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5">
+            <FiGlobe size={15} className="text-indigo-600" />
+            <span className="text-xs text-gray-500 font-medium">Region:</span>
+            <select
+              value={activeRegion ?? ''}
+              onChange={e => setActiveRegion(e.target.value || null)}
+              className="text-sm font-semibold text-gray-800 bg-transparent outline-none cursor-pointer">
+              <option value="">All Regions</option>
+              {regions.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* ── Mobile overlay ── */}
       {sidebarOpen && (
@@ -101,6 +131,11 @@ export default function Layout({ children }) {
             <span className="font-medium truncate">{user?.name}</span>
             <span className="text-[11px] bg-indigo-700 px-2 py-0.5 rounded shrink-0">{user?.role}</span>
           </div>
+          {!isAdmin && user?.region && (
+            <div className="text-[11px] text-indigo-400 mb-2 flex items-center gap-1">
+              <FiGlobe size={11} /> {user.region}
+            </div>
+          )}
           <button onClick={handleLogout}
             className="flex items-center gap-2 text-indigo-300 hover:text-white text-sm cursor-pointer">
             <FiLogOut size={14} /> Logout
@@ -108,9 +143,13 @@ export default function Layout({ children }) {
         </div>
       </aside>
 
-      {/* ── Main content ── */}
-      <main className="flex-1 lg:ml-64 p-4 pt-[4.5rem] pb-20 lg:p-8 lg:pt-8 lg:pb-8">
-        {children}
+      {/* ── Main content ──
+          key={activeRegion} forces the active page to remount (and re-fetch its data)
+          whenever the admin switches region. */}
+      <main className={`flex-1 lg:ml-64 p-4 pt-[4.5rem] pb-20 lg:p-8 lg:pb-8 ${isAdmin ? 'lg:pt-20' : 'lg:pt-8'}`}>
+        <div key={activeRegion ?? 'all'}>
+          {children}
+        </div>
       </main>
 
       {/* ── Mobile bottom nav bar ── */}

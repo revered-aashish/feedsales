@@ -31,6 +31,7 @@ router.post('/login', (req, res) => {
     const payload = {
       id: user.id, name: user.name, email: user.email, role: user.role,
       is_dispatch_manager: user.is_dispatch_manager ? true : false,
+      region: user.region || null,
     };
     const token = jwt.sign(payload, SECRET, { expiresIn: '24h' });
 

@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import db from '../db.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, regionClause } from '../middleware/auth.js';
 
 const router = Router();
 router.use(authenticate);
 
 // ── List orders ───────────────────────────────────────────────────────────────
 router.get('/', (req, res) => {
-  const { status, salesman_id, customer_id } = req.query;
+  const { status, salesman_id, customer_id, region } = req.query;
   const isPrivileged = req.user.role === 'admin' || req.user.is_dispatch_manager;
 
   let sql = `
@@ -21,11 +21,15 @@ router.get('/', (req, res) => {
   `;
   const params = [];
 
-  // Salesmen only see their own orders
-  if (!isPrivileged) {
-    sql += ' AND o.salesman_id = ?'; params.push(req.user.id);
-  } else if (salesman_id) {
-    sql += ' AND o.salesman_id = ?'; params.push(salesman_id);
+  if (isPrivileged) {
+    // Privileged: apply region filter if admin selected one, or explicit salesman filter
+    const rc = regionClause(req.user, region);
+    sql += rc.sql; params.push(...rc.params);
+    if (salesman_id) { sql += ' AND o.salesman_id = ?'; params.push(salesman_id); }
+  } else {
+    // Regular salesman: scope to their region (own orders fallback if no region)
+    const rc = regionClause(req.user, null);
+    sql += rc.sql; params.push(...rc.params);
   }
 
   if (status)      { sql += ' AND o.status = ?';      params.push(status); }

@@ -1,10 +1,18 @@
 import axios from 'axios';
+import { regionStore } from './regionStore';
 
 const api = axios.create({ baseURL: '/api' });
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  // Inject active region for admin GET requests so all pages filter automatically
+  const region = regionStore.get();
+  if (region && config.method === 'get') {
+    config.params = { ...config.params, region };
+  }
+
   return config;
 });
 

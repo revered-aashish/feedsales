@@ -31,3 +31,15 @@ export function dispatchOrAdmin(req, res, next) {
   }
   return res.status(403).json({ error: 'Dispatch manager or admin access required' });
 }
+
+// Returns a WHERE clause fragment + params array that scopes data to the user's region.
+// alias = the salesman table alias used in the calling query.
+export function regionClause(user, regionParam, alias = 's') {
+  if (user.role === 'admin') {
+    if (regionParam) return { sql: ` AND ${alias}.region = ?`, params: [regionParam] };
+    return { sql: '', params: [] };
+  }
+  if (user.region) return { sql: ` AND ${alias}.region = ?`, params: [user.region] };
+  // Salesman with no region assigned — restrict to own rows only
+  return { sql: ` AND ${alias}.id = ?`, params: [user.id] };
+}

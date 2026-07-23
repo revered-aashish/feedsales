@@ -245,6 +245,33 @@ try {
   } catch (e2) { /* already exists */ }
 }
 
+// Migration: add region to salesman
+try {
+  db.prepare('SELECT region FROM salesman LIMIT 1').get();
+} catch (e) {
+  try {
+    db.exec("ALTER TABLE salesman ADD COLUMN region TEXT");
+    console.log('Migrated salesman: added region column');
+  } catch (e2) { /* already exists */ }
+}
+
+// Region master table + default region + backfill of legacy data
+const DEFAULT_REGION = 'Rajkot Region';
+db.exec(`
+  CREATE TABLE IF NOT EXISTS region (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT UNIQUE NOT NULL,
+    created_at TEXT DEFAULT (datetime('now'))
+  );
+`);
+// Ensure the default region exists
+db.prepare('INSERT OR IGNORE INTO region (name) VALUES (?)').run(DEFAULT_REGION);
+// Backfill any salesman without a region to the default (older data)
+const backfilled = db.prepare("UPDATE salesman SET region = ? WHERE region IS NULL OR region = ''").run(DEFAULT_REGION);
+if (backfilled.changes > 0) {
+  console.log(`Backfilled ${backfilled.changes} salesman record(s) to "${DEFAULT_REGION}"`);
+}
+
 // ── Ordering & Dispatch tables ────────────────────────────────────────────────
 db.exec(`
   CREATE TABLE IF NOT EXISTS orders (

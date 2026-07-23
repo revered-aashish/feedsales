@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import db from '../db.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, regionClause } from '../middleware/auth.js';
 import { generateListPDF } from '../utils/pdfReport.js';
 import multer from 'multer';
 import path from 'path';
@@ -32,12 +32,15 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', (req, res) => {
-  const { customer_id, salesman_id, status, date_from, date_to } = req.query;
+  const { customer_id, salesman_id, status, date_from, date_to, region } = req.query;
   let query = `SELECT t.*, c.name as customer_name, c.company as customer_company,
     s.name as salesman_name FROM trial t
     JOIN customer c ON t.customer_id = c.id
     JOIN salesman s ON t.salesman_id = s.id WHERE 1=1`;
   const params = [];
+
+  const rc = regionClause(req.user, region);
+  query += rc.sql; params.push(...rc.params);
 
   if (customer_id) { query += ' AND t.customer_id = ?'; params.push(customer_id); }
   if (salesman_id) { query += ' AND t.salesman_id = ?'; params.push(salesman_id); }
