@@ -235,6 +235,16 @@ try {
   } catch (e2) { /* already exists */ }
 }
 
+// Migration: add mom_path to daily_movement
+try {
+  db.prepare('SELECT mom_path FROM daily_movement LIMIT 1').get();
+} catch (e) {
+  try {
+    db.exec('ALTER TABLE daily_movement ADD COLUMN mom_path TEXT');
+    console.log('Migrated daily_movement table: added mom_path column');
+  } catch (e2) { /* already exists */ }
+}
+
 // Migration: add is_dispatch_manager to salesman
 try {
   db.prepare('SELECT is_dispatch_manager FROM salesman LIMIT 1').get();
