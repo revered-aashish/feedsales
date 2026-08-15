@@ -5,7 +5,7 @@ import { useRegion } from '../context/RegionContext';
 import {
   FiUsers, FiClipboard, FiAlertCircle, FiLogOut, FiHome, FiUserX, FiUserPlus,
   FiCalendar, FiCheckCircle, FiMenu, FiX, FiPackage, FiTarget,
-  FiShoppingCart, FiTruck, FiGlobe,
+  FiShoppingCart, FiTruck, FiGlobe, FiLayers,
 } from 'react-icons/fi';
 
 const navItems = [
@@ -17,6 +17,7 @@ const navItems = [
   { path: '/movements',      label: 'Movements Achieved',   icon: FiCheckCircle },
   { path: '/products',       label: 'Products',             icon: FiPackage },
   { path: '/self-appraisal', label: 'Self Appraisal',       icon: FiTarget },
+  { path: '/coating-samples',label: 'Coating Samples',      icon: FiLayers },
   { path: '/lost-customers', label: 'Lost Customers',       icon: FiUserX },
   // ── Ordering & Dispatch (temporarily hidden) ──
   // { path: '/orders',         label: 'Orders',               icon: FiShoppingCart },

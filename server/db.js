@@ -265,6 +265,74 @@ try {
   } catch (e2) { /* already exists */ }
 }
 
+// ── Coating Sample Data Sheet + audit log ─────────────────────────────────────
+db.exec(`
+  CREATE TABLE IF NOT EXISTS coating_sample (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    customer_id INTEGER,
+    client_name TEXT,
+    salesman_id INTEGER NOT NULL,
+
+    -- Casting details
+    casting_weight TEXT,
+    casting_thickness TEXT,
+    metal_type TEXT,
+    pouring_temperature TEXT,
+    pouring_time TEXT,
+    pouring_mode TEXT,
+
+    -- Coating section
+    application TEXT,
+    baume_as_is TEXT,
+    dilution_ratio TEXT,
+    viscosity_diluted TEXT,
+    baume_diluted TEXT,
+    wft_diluted TEXT,
+    mixing_process TEXT,
+    coating_layers TEXT,
+
+    -- Mould section
+    binder_system TEXT,
+    sand_afs TEXT,
+    drying_method TEXT,
+
+    -- Current coating
+    current_coating_used TEXT,
+    current_coating_issues TEXT,
+    approximate_consumption TEXT,
+
+    remarks TEXT,
+
+    -- Admin recommendation
+    recommended_product TEXT,
+    recommendation_remarks TEXT,
+    recommended_by INTEGER,
+    recommended_at TEXT,
+
+    status TEXT DEFAULT 'pending',
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (customer_id) REFERENCES customer(id),
+    FOREIGN KEY (salesman_id) REFERENCES salesman(id),
+    FOREIGN KEY (recommended_by) REFERENCES salesman(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS coating_sample_audit (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sample_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    action TEXT NOT NULL,
+    details TEXT,
+    created_at TEXT DEFAULT (datetime('now')),
+    FOREIGN KEY (sample_id) REFERENCES coating_sample(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES salesman(id)
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_coating_sample_salesman ON coating_sample(salesman_id);
+  CREATE INDEX IF NOT EXISTS idx_coating_sample_customer ON coating_sample(customer_id);
+  CREATE INDEX IF NOT EXISTS idx_coating_audit_sample ON coating_sample_audit(sample_id);
+`);
+
 // Region master table + default region + backfill of legacy data
 const DEFAULT_REGION = 'Rajkot Region';
 db.exec(`

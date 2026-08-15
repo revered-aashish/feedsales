@@ -26,6 +26,7 @@ import orderRoutes from './routes/orders.js';
 import vehicleRoutes from './routes/vehicles.js';
 import dispatchRoutes from './routes/dispatches.js';
 import regionRoutes from './routes/regions.js';
+import coatingSampleRoutes from './routes/coatingSamples.js';
 
 // Auto-seed if database is empty (no admin user exists)
 function autoSeed() {
@@ -82,6 +83,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/vehicles', vehicleRoutes);
 app.use('/api/dispatches', dispatchRoutes);
 app.use('/api/regions', regionRoutes);
+app.use('/api/coating-samples', coatingSampleRoutes);
 
 // Global error handler — catches all unhandled errors and returns JSON
 app.use((err, req, res, next) => {

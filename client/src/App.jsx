@@ -14,6 +14,7 @@ import Salesmen from './pages/Salesmen';
 import VisitPlans from './pages/VisitPlans';
 import Products from './pages/Products';
 import SelfAppraisal from './pages/SelfAppraisal';
+import CoatingSamples from './pages/CoatingSamples';
 import Orders from './pages/Orders';
 import Vehicles from './pages/Vehicles';
 import Dispatches from './pages/Dispatches';
@@ -42,6 +43,7 @@ function App() {
           <Route path="/lost-customers" element={<ProtectedRoute><LostCustomers /></ProtectedRoute>} />
           <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
           <Route path="/self-appraisal" element={<ProtectedRoute><SelfAppraisal /></ProtectedRoute>} />
+          <Route path="/coating-samples" element={<ProtectedRoute><CoatingSamples /></ProtectedRoute>} />
           <Route path="/salesmen" element={<ProtectedRoute><Salesmen /></ProtectedRoute>} />
           <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
           <Route path="/vehicles" element={<ProtectedRoute><Vehicles /></ProtectedRoute>} />
