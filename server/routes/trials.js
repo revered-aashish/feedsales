@@ -2,6 +2,7 @@ import { Router } from 'express';
 import db from '../db.js';
 import { authenticate, regionClause } from '../middleware/auth.js';
 import { generateListPDF } from '../utils/pdfReport.js';
+import PDFDocument from 'pdfkit';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -147,6 +148,75 @@ router.delete('/:id', (req, res) => {
   }
   db.prepare('DELETE FROM trial WHERE id = ?').run(req.params.id);
   res.json({ message: 'Trial deleted' });
+});
+
+// Generate a Minutes of Meeting PDF from the trial details
+router.get('/:id/download/pdf', (req, res) => {
+  const t = db.prepare(`
+    SELECT t.*, c.name as customer_name, c.company as customer_company, c.city as customer_city,
+      s.name as salesman_name, s.email as salesman_email
+    FROM trial t
+    JOIN customer c ON t.customer_id = c.id
+    JOIN salesman s ON t.salesman_id = s.id
+    WHERE t.id = ?
+  `).get(req.params.id);
+  if (!t) return res.status(404).json({ error: 'Trial not found' });
+
+  const fmt = (d) => { const m = String(d || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[3]}-${m[2]}-${m[1]}` : (d || 'N/A'); };
+  const company = t.customer_company || t.customer_name;
+  const statusLabel = t.status.charAt(0).toUpperCase() + t.status.slice(1).replace('_', ' ');
+
+  const doc = new PDFDocument({ size: 'A4', margin: 50 });
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `attachment; filename="MOM_Trial_${(company || '').replace(/[^a-zA-Z0-9]/g, '_')}_${t.id}.pdf"`);
+  doc.pipe(res);
+
+  const pageWidth = doc.page.width - 100;
+
+  doc.moveTo(50, 45).lineTo(50 + pageWidth, 45).strokeColor('#4338ca').lineWidth(3).stroke();
+  doc.fontSize(22).fillColor('#312e81').font('Helvetica-Bold')
+    .text('Feedchem (India) Limited', 50, 55, { align: 'center', width: pageWidth });
+  doc.fontSize(12).fillColor('#6366f1').font('Helvetica')
+    .text('Minutes of Meeting - Product Trial', 50, 82, { align: 'center', width: pageWidth });
+  doc.moveTo(50, 100).lineTo(50 + pageWidth, 100).strokeColor('#4338ca').lineWidth(1).stroke();
+
+  let y = 115;
+  doc.roundedRect(50, y, pageWidth, 110, 5).fillAndStroke('#f5f3ff', '#c7d2fe');
+  y += 12;
+  const drawField = (label, value, lx, vx, yPos) => {
+    doc.fontSize(9).fillColor('#6b7280').font('Helvetica-Bold').text(label, lx, yPos);
+    doc.fontSize(10).fillColor('#1f2937').font('Helvetica').text(value || 'N/A', vx, yPos, { width: 140 });
+  };
+  drawField('Company:', company, 65, 150, y);
+  drawField('Status:', statusLabel, 310, 390, y);
+  y += 20;
+  drawField('Location:', t.customer_city, 65, 150, y);
+  drawField('Salesman:', t.salesman_name, 310, 390, y);
+  y += 20;
+  drawField('Product:', t.product, 65, 150, y);
+  drawField('Quantity:', t.quantity, 310, 390, y);
+  y += 20;
+  drawField('Start Date:', fmt(t.start_date), 65, 150, y);
+  drawField('End Date:', fmt(t.end_date), 310, 390, y);
+
+  y = 115 + 110 + 20;
+  const section = (title, text) => {
+    doc.fontSize(11).fillColor('#312e81').font('Helvetica-Bold').text(title, 50, y);
+    y += 18;
+    doc.moveTo(50, y).lineTo(50 + pageWidth, y).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
+    y += 8;
+    doc.fontSize(10).fillColor('#374151').font('Helvetica').text(text, 55, y, { width: pageWidth - 10 });
+    y += doc.heightOfString(text, { width: pageWidth - 10 }) + 15;
+  };
+  section('Trial Details', `Trial of ${t.product} at ${company}${t.quantity ? ` (${t.quantity})` : ''}. Current status: ${statusLabel}.`);
+  section('Discussion / Notes', t.notes || 'No notes recorded.');
+
+  const footerY = doc.page.height - 50;
+  doc.moveTo(50, footerY).lineTo(50 + pageWidth, footerY).strokeColor('#e5e7eb').lineWidth(0.5).stroke();
+  doc.fontSize(8).fillColor('#9ca3af').font('Helvetica')
+    .text(`Generated on ${fmt(new Date().toISOString())} | Feedchem (India) Limited | Confidential`, 50, footerY - 12, { align: 'center', width: pageWidth, lineBreak: false });
+
+  doc.end();
 });
 
 // Upload MoM PDF for a trial

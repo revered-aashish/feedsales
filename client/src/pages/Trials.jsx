@@ -65,6 +65,22 @@ export default function Trials() {
     } catch { toast.error('Failed to download MoM'); }
   };
 
+  const downloadMOM = async (id) => {
+    try {
+      const response = await api.get(`/trials/${id}/download/pdf`, { responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }));
+      const link = document.createElement('a');
+      link.href = url;
+      const disposition = response.headers['content-disposition'];
+      link.download = disposition ? disposition.split('filename="')[1]?.replace('"', '') : `MOM_Trial_${id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success('MoM PDF downloaded');
+    } catch { toast.error('Failed to download MoM PDF'); }
+  };
+
   const load = () => {
     const params = {};
     if (dateFrom) params.date_from = dateFrom;
@@ -258,6 +274,9 @@ export default function Trials() {
             <p className="text-xs text-gray-600">{t.product}{t.quantity ? ` · ${t.quantity}` : ''}</p>
             <p className="text-xs text-gray-400 mt-0.5">{[formatDate(t.start_date), t.salesman_name].filter(Boolean).join(' · ')}</p>
             <div className="flex justify-end gap-3 mt-2 pt-2 border-t border-gray-100">
+              <button onClick={() => downloadMOM(t.id)} className="p-1.5 text-gray-400 active:text-green-600" title="Download MoM PDF">
+                <FiDownload size={18} />
+              </button>
               {t.mom_path && (
                 <button onClick={() => downloadUploadedMoM(t.id, t.customer_company || t.customer_name)}
                   className="p-1.5 text-green-600" title="Download Uploaded MoM">
@@ -305,6 +324,9 @@ export default function Trials() {
                   <td className="px-4 py-3 text-gray-600">{t.salesman_name}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
+                      <button onClick={() => downloadMOM(t.id)} className="text-gray-500 hover:text-green-600 cursor-pointer" title="Download MoM PDF">
+                        <FiDownload size={16} />
+                      </button>
                       {t.mom_path && (
                         <button onClick={() => downloadUploadedMoM(t.id, t.customer_company || t.customer_name)}
                           className="text-green-600 hover:text-green-800 cursor-pointer" title="Download Uploaded MoM">
