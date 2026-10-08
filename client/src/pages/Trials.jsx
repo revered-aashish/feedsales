@@ -5,6 +5,7 @@ import Modal from '../components/Modal';
 import CustomerSearchSelect from '../components/CustomerSearchSelect';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX, FiDownload, FiUpload, FiPaperclip } from 'react-icons/fi';
+import { formatDate } from '../utils/date';
 import DateInput from '../components/DateInput';
 
 const emptyForm = { customer_id: '', product: '', quantity: '', status: 'pending', start_date: '', end_date: '', notes: '' };
@@ -255,7 +256,7 @@ export default function Trials() {
               <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[t.status] || ''}`}>{t.status}</span>
             </div>
             <p className="text-xs text-gray-600">{t.product}{t.quantity ? ` · ${t.quantity}` : ''}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{[t.start_date, t.salesman_name].filter(Boolean).join(' · ')}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{[formatDate(t.start_date), t.salesman_name].filter(Boolean).join(' · ')}</p>
             <div className="flex justify-end gap-3 mt-2 pt-2 border-t border-gray-100">
               {t.mom_path && (
                 <button onClick={() => downloadUploadedMoM(t.id, t.customer_company || t.customer_name)}
@@ -300,7 +301,7 @@ export default function Trials() {
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor[t.status] || ''}`}>{t.status}</span>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{t.start_date}</td>
+                  <td className="px-4 py-3 text-gray-600">{formatDate(t.start_date)}</td>
                   <td className="px-4 py-3 text-gray-600">{t.salesman_name}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">

@@ -6,6 +6,7 @@ import CustomerSearchSelect from '../components/CustomerSearchSelect';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX, FiMessageSquare, FiAlertTriangle, FiSend, FiDownload, FiUpload, FiPaperclip } from 'react-icons/fi';
 import DateInput from '../components/DateInput';
+import { formatDate, formatDateTime } from '../utils/date';
 
 const today = new Date().toISOString().split('T')[0];
 const emptyForm = { customer_id: '', visit_date: today, purpose: '', notes: '', status: 'planned', is_issue: false };
@@ -361,7 +362,7 @@ export default function Movements() {
         {movements.map(m => (
           <div key={m.id} className={`p-4 ${m.is_issue ? 'bg-orange-50/30' : ''}`}>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-gray-400">{m.visit_date}</span>
+              <span className="text-xs font-medium text-gray-400">{formatDate(m.visit_date)}</span>
             </div>
             <p className="font-semibold text-gray-800 text-sm leading-snug">{m.customer_company || m.customer_name}</p>
             <p className="text-xs text-gray-500 mt-0.5">{m.purpose} &middot; {m.salesman_name}</p>
@@ -414,7 +415,7 @@ export default function Movements() {
             <tbody className="divide-y divide-gray-100">
               {movements.map(m => (
                 <tr key={m.id} className={`hover:bg-gray-50 ${m.is_issue ? 'bg-orange-50/40' : ''}`}>
-                  <td className="px-4 py-3 font-medium text-gray-800">{m.visit_date}</td>
+                  <td className="px-4 py-3 font-medium text-gray-800">{formatDate(m.visit_date)}</td>
                   <td className="px-4 py-3 text-gray-600">{m.customer_company || m.customer_name}</td>
                   <td className="px-4 py-3 text-gray-600">{m.purpose}</td>
                   <td className="px-4 py-3 text-gray-500 text-xs" style={{maxWidth:'160px'}}>
@@ -584,7 +585,7 @@ export default function Movements() {
         <Modal title="Comments" onClose={() => setCommentModal(null)}>
           <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-gray-500">{commentModal.visit_date}</span>
+              <span className="text-xs font-medium text-gray-500">{formatDate(commentModal.visit_date)}</span>
               {commentModal.is_issue === 1 && (
                 <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full text-xs font-medium">
                   <FiAlertTriangle size={10} /> Issue
@@ -610,7 +611,7 @@ export default function Movements() {
                         <span className="ml-1.5 bg-indigo-200 text-indigo-800 text-[10px] px-1.5 py-0.5 rounded">Admin</span>
                       )}
                     </span>
-                    <span className="text-[10px] text-gray-400">{c.created_at?.replace('T', ' ').substring(0, 16)}</span>
+                    <span className="text-[10px] text-gray-400">{formatDateTime(c.created_at)}</span>
                   </div>
                   <p className="text-sm text-gray-700 whitespace-pre-wrap">{c.comment}</p>
                 </div>

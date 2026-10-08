@@ -8,6 +8,7 @@ import {
   FiPlus, FiEdit2, FiTrash2, FiPause, FiPlay, FiCheck,
   FiChevronDown, FiChevronUp, FiFilter, FiX, FiPackage,
 } from 'react-icons/fi';
+import { formatDate, formatDateTime } from '../utils/date';
 
 const STATUS_META = {
   pending:              { label: 'Pending',              bg: 'bg-gray-100',   fg: 'text-gray-700' },
@@ -248,7 +249,7 @@ export default function Orders() {
               <span className="bg-gray-100 px-2 py-0.5 rounded">{o.billing_type === 'bill' ? 'On Bill' : 'Challan'}</span>
               <span className="bg-gray-100 px-2 py-0.5 rounded capitalize">{o.order_type}</span>
               {o.schedule_type === 'scheduled' && o.scheduled_at && (
-                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{o.scheduled_at.replace('T', ' ')}</span>
+                <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded">{formatDateTime(o.scheduled_at)}</span>
               )}
               {o.schedule_type === 'asap' && <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded">ASAP</span>}
             </div>
@@ -318,7 +319,7 @@ export default function Orders() {
                       <span className="text-xs bg-gray-100 px-1.5 py-0.5 rounded capitalize">{o.order_type}</span>
                       {o.schedule_type === 'asap'
                         ? <span className="text-xs bg-orange-50 text-orange-700 px-1.5 py-0.5 rounded">ASAP</span>
-                        : <span className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">{o.scheduled_at?.slice(0, 10)}</span>}
+                        : <span className="text-xs bg-blue-50 text-blue-700 px-1.5 py-0.5 rounded">{formatDate(o.scheduled_at)}</span>}
                     </div>
                     {o.hold_remark && <p className="text-xs text-yellow-700 mt-1">Hold: {o.hold_remark}</p>}
                   </td>

@@ -8,6 +8,7 @@ import {
   FiPlus, FiTruck, FiChevronDown, FiChevronUp, FiCheck,
   FiTrash2, FiPackage, FiFilter, FiX,
 } from 'react-icons/fi';
+import { formatDate } from '../utils/date';
 
 const STATUS_META = {
   pending:   { label: 'Pending',   bg: 'bg-yellow-100', fg: 'text-yellow-700' },
@@ -176,7 +177,7 @@ export default function Dispatches() {
                   <StatusBadge status={d.status} />
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  {d.dispatch_date} · {d.items.length} item{d.items.length !== 1 ? 's' : ''} · by {d.created_by_name}
+                  {formatDate(d.dispatch_date)} · {d.items.length} item{d.items.length !== 1 ? 's' : ''} · by {d.created_by_name}
                 </p>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">

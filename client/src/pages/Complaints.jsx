@@ -5,6 +5,7 @@ import Modal from '../components/Modal';
 import CustomerSearchSelect from '../components/CustomerSearchSelect';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiFilter, FiX, FiMessageSquare, FiDownload, FiSend, FiUpload, FiPaperclip } from 'react-icons/fi';
+import { formatDate, formatDateTime } from '../utils/date';
 import DateInput from '../components/DateInput';
 
 const emptyForm = { customer_id: '', subject: '', description: '', status: 'open', resolution: '' };
@@ -305,7 +306,7 @@ export default function Complaints() {
               <span className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[c.status] || ''}`}>{c.status}</span>
             </div>
             <p className="text-xs text-gray-700">{c.subject}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{c.created_at?.split('T')[0]} · {c.salesman_name}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{formatDate(c.created_at)} · {c.salesman_name}</p>
             <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-gray-100">
               {c.comment_count > 0 && (
                 <span className="flex items-center gap-1 text-gray-400 text-xs"><FiMessageSquare size={11} />{c.comment_count}</span>
@@ -357,7 +358,7 @@ export default function Complaints() {
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColor[c.status] || ''}`}>{c.status}</span>
                   </td>
                   <td className="px-4 py-3 text-gray-600">{c.salesman_name}</td>
-                  <td className="px-4 py-3 text-gray-600">{c.created_at?.split('T')[0]}</td>
+                  <td className="px-4 py-3 text-gray-600">{formatDate(c.created_at)}</td>
                   <td className="px-4 py-3">
                     {c.comment_count > 0 && (
                       <span className="inline-flex items-center gap-1 text-gray-500 text-xs">
@@ -438,7 +439,7 @@ export default function Complaints() {
         <Modal title="Comments" onClose={() => setCommentModal(null)}>
           <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-gray-500">{commentModal.created_at?.split('T')[0]}</span>
+              <span className="text-xs font-medium text-gray-500">{formatDate(commentModal.created_at)}</span>
               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${statusColor[commentModal.status] || ''}`}>{commentModal.status}</span>
             </div>
             <p className="text-sm font-medium text-gray-800">{commentModal.customer_company || commentModal.customer_name}</p>
@@ -461,7 +462,7 @@ export default function Complaints() {
                         <span className="ml-1.5 bg-indigo-200 text-indigo-800 text-[10px] px-1.5 py-0.5 rounded">Admin</span>
                       )}
                     </span>
-                    <span className="text-[10px] text-gray-400">{c.created_at?.replace('T', ' ').substring(0, 16)}</span>
+                    <span className="text-[10px] text-gray-400">{formatDateTime(c.created_at)}</span>
                   </div>
                   <p className="text-sm text-gray-700 whitespace-pre-wrap">{c.comment}</p>
                 </div>

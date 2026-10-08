@@ -5,6 +5,7 @@ import Modal from '../components/Modal';
 import CustomerSearchSelect from '../components/CustomerSearchSelect';
 import toast from 'react-hot-toast';
 import { FiPlus, FiSave, FiTrash2, FiFilter, FiX, FiCalendar, FiEye, FiDownload, FiEdit2 } from 'react-icons/fi';
+import { formatDate } from '../utils/date';
 import DateInput from '../components/DateInput';
 
 const today = new Date().toISOString().split('T')[0];
@@ -269,7 +270,7 @@ export default function VisitPlans() {
         {groupedList.map((g, idx) => (
           <div key={idx} className="p-4">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="font-semibold text-gray-800 text-sm">{g.visit_date}</span>
+              <span className="font-semibold text-gray-800 text-sm">{formatDate(g.visit_date)}</span>
               <span className="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-xs font-medium">
                 {g.items.length} visit{g.items.length > 1 ? 's' : ''}
               </span>
@@ -313,7 +314,7 @@ export default function VisitPlans() {
             <tbody className="divide-y divide-gray-100">
               {groupedList.map((g, idx) => (
                 <tr key={idx} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-800">{g.visit_date}</td>
+                  <td className="px-4 py-3 font-medium text-gray-800">{formatDate(g.visit_date)}</td>
                   <td className="px-4 py-3 text-gray-600">{g.salesman_name}</td>
                   <td className="px-4 py-3">
                     <span className="bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full text-xs font-medium">

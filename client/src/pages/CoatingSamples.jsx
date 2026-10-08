@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import {
   FiPlus, FiEdit2, FiTrash2, FiDownload, FiClock, FiCheckCircle, FiAward,
 } from 'react-icons/fi';
+import { formatDateTime } from '../utils/date';
 
 const emptyForm = {
   customer_id: '', client_name: '',
@@ -304,7 +305,7 @@ export default function CoatingSamples() {
                       {a.details && <span className="text-gray-500"> — {a.details}</span>}
                     </div>
                     <div className="text-xs text-gray-400 mt-0.5">
-                      {a.user_name}{a.user_role === 'admin' ? ' (Admin)' : ''} · {a.created_at}
+                      {a.user_name}{a.user_role === 'admin' ? ' (Admin)' : ''} · {formatDateTime(a.created_at)}
                     </div>
                   </div>
                 </div>

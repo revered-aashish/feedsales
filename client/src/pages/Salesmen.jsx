@@ -5,6 +5,7 @@ import api from '../api';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiTrash2, FiEye, FiEyeOff, FiDownload, FiMapPin, FiX } from 'react-icons/fi';
+import { formatDate } from '../utils/date';
 import { useRegion } from '../context/RegionContext';
 
 const emptyForm = { name: '', email: '', password: '', phone: '', role: 'salesman', is_dispatch_manager: false, region: '' };
@@ -177,7 +178,7 @@ export default function Salesmen() {
                       </span>
                     </button>
                   </td>
-                  <td className="px-4 py-3 text-gray-600">{s.created_at?.split(' ')[0]}</td>
+                  <td className="px-4 py-3 text-gray-600">{formatDate(s.created_at)}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <button onClick={() => handleEdit(s)} className="text-indigo-600 hover:text-indigo-800 cursor-pointer" title="Edit">

@@ -5,6 +5,7 @@ import api from '../api';
 import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
 import { FiPlus, FiEdit2, FiPower, FiTruck } from 'react-icons/fi';
+import { formatDate } from '../utils/date';
 
 const emptyForm = { vehicle_number: '', driver_name: '' };
 
@@ -111,7 +112,7 @@ export default function Vehicles() {
                     {v.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-gray-500 text-xs">{v.created_at?.slice(0, 10)}</td>
+                <td className="px-4 py-3 text-gray-500 text-xs">{formatDate(v.created_at)}</td>
                 <td className="px-4 py-3 flex gap-2">
                   <button onClick={() => { setForm({ vehicle_number: v.vehicle_number, driver_name: v.driver_name }); setEditId(v.id); setShowModal(true); }}
                     className="text-indigo-600 hover:text-indigo-800 cursor-pointer"><FiEdit2 size={15} /></button>

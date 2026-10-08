@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { FiFilter, FiX, FiSearch, FiDownload } from 'react-icons/fi';
+import { formatDate } from '../utils/date';
 import DateInput from '../components/DateInput';
 
 export default function LostCustomers() {
@@ -218,7 +219,7 @@ export default function LostCustomers() {
               </p>
             )}
             {c.lost_date && (
-              <p className="text-xs text-gray-400 mt-1">Date: {c.lost_date}</p>
+              <p className="text-xs text-gray-400 mt-1">Date: {formatDate(c.lost_date)}</p>
             )}
           </div>
         ))}
@@ -242,7 +243,7 @@ export default function LostCustomers() {
                   <td className="px-4 py-3 text-gray-600">{c.city}</td>
                   <td className="px-4 py-3 text-gray-600">{c.salesman_name}</td>
                   <td className="px-4 py-3">{statusBadge(c)}</td>
-                  <td className="px-4 py-3 text-gray-600">{c.lost_date || '—'}</td>
+                  <td className="px-4 py-3 text-gray-600">{c.lost_date ? formatDate(c.lost_date) : '—'}</td>
                   <td className="px-4 py-3 text-gray-600 max-w-xs">
                     {c.is_lost === 2 ? (
                       <span>
